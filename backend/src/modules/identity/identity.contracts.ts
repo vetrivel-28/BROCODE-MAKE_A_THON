@@ -89,3 +89,4 @@ export async function getP3WalletBalance(
   }
   return 0;
 }
+

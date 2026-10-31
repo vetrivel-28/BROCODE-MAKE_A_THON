@@ -30,3 +30,4 @@ export function createIdentityRouter(service?: IdentityService): Router {
 }
 
 export default createIdentityRouter;
+

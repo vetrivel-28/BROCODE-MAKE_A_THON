@@ -28,3 +28,4 @@
 - `backend/src/modules/catalog` & `subscriptions` — Person 2 (Catalog, Plans, Subscriptions, Discounts)
 - `backend/src/modules/billing` & `payments` — Person 3 (Invoice Engine, Control Room, Dunning, Wallet)
 - `backend/src/modules/insights`, `frontend/src/shared`, `app-shell`, `website` — Person 4 (Design System, App Shell, Dashboard)
+
