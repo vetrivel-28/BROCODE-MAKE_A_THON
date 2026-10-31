@@ -21,6 +21,26 @@
   --radius: 16px;
 }
 
+.font-handwriting {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+
+.bg-page {
+  background-color: var(--background);
+}
+
+.bg-surface {
+  background-color: var(--surface);
+}
+
+.text-main {
+  color: var(--text);
+}
+
+.border-subtle {
+  border-color: #E9EAF2;
+}
+
 * {
   box-sizing: border-box;
 }
