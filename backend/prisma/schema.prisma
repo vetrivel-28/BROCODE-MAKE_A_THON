@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,4 +6,392 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+}
+
+enum SubscriptionStatus {
+  DRAFT
+  QUOTATION
+  CONFIRMED
+  ACTIVE
+  CLOSED
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  REJECTED
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+  VOID
+}
+
+enum CustomizationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum AuditAction {
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_CLOSED
+  SUBSCRIPTION_UPGRADED
+  QUOTATION_CREATED
+  QUOTATION_CONFIRMED
+  INVOICE_CREATED
+  INVOICE_PAID
+  PAYMENT_CAPTURED
+  PAYMENT_FAILED
+  WALLET_CREDITED
+  WALLET_DEBITED
+  CUSTOMIZATION_PURCHASED
+  PLAN_CHANGED
+}
+
+model Tenant {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  industry      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  users         User[]
+  subscriptions Subscription[]
+  wallet        Wallet?
+  quotations    Quotation[]
+  invoices      Invoice[]
+  products      Product[]
+  taxes         Tax[]
+  discounts     Discount[]
+  customizations Customization[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String
+  email               String
+  passwordHash        String
+  role                UserRole
+  tenantId            String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  tenant              Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@unique([email, tenantId])
+  @@index([email])
+  @@index([tenantId])
+}
+
+model RefreshToken {
+  id           String        @id @default(cuid())
+  tokenHash    String        @unique
+  familyId     String
+  userId       String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?       @unique
+  createdAt    DateTime      @default(now())
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  replacedBy   RefreshToken? @relation("RefreshTokenRotation", fields: [replacedById, userId, familyId], references: [id, userId, familyId], onDelete: Restrict, onUpdate: Cascade)
+  replaces     RefreshToken? @relation("RefreshTokenRotation")
+
+  @@unique([id, userId, familyId])
+  @@unique([replacedById, userId, familyId])
+  @@index([familyId, revokedAt])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, usedAt])
+  @@index([expiresAt])
+}
+
+model PlatformPlan {
+  id                 String          @id @default(cuid())
+  code               String          @unique
+  name               String
+  description        String?
+  price              Decimal         @db.Decimal(19, 4)
+  currency           String          @db.VarChar(3)
+  billingInterval    BillingInterval
+  appLimit           Int
+  customizationSlots Int
+  entitlements       Json
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  subscriptions      Subscription[]
+
+  @@index([isActive, code])
+}
+
+model Subscription {
+  id                         String             @id @default(cuid())
+  tenantId                   String
+  platformPlanId             String
+  status                     SubscriptionStatus
+  quantity                   Int
+  unitPriceSnapshot          Decimal            @db.Decimal(19, 4)
+  priceSnapshot              Decimal            @db.Decimal(19, 4)
+  currency                   String             @db.VarChar(3)
+  billingInterval            BillingInterval
+  customizationSlotsIncluded Int
+  planSnapshot               Json
+  startsAt                   DateTime           @default(now())
+  endsAt                     DateTime?
+  razorpayOrderId            String?            @unique
+  razorpayPaymentId          String?            @unique
+  canceledAt                 DateTime?
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+  tenant                     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  platformPlan               PlatformPlan       @relation(fields: [platformPlanId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  quotations                 Quotation[]
+  invoices                   Invoice[]
+
+  // The migration enforces one ACTIVE row per tenant with a PostgreSQL partial unique index.
+  @@index([platformPlanId])
+  @@index([tenantId, status, createdAt])
+  @@index([status, endsAt])
+}
+
+model Wallet {
+  id           String              @id @default(cuid())
+  tenantId     String              @unique
+  balance      Decimal             @default(0) @db.Decimal(19, 4)
+  currency     String              @default("INR") @db.VarChar(3)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  transactions WalletTransaction[]
+
+  @@unique([id, tenantId])
+}
+
+model WalletTransaction {
+  id             String                @id @default(cuid())
+  walletId       String
+  tenantId       String
+  type           WalletTransactionType
+  amount         Decimal               @db.Decimal(19, 4)
+  balanceAfter   Decimal               @db.Decimal(19, 4)
+  idempotencyKey String                @unique
+  description    String?
+  createdAt      DateTime              @default(now())
+  wallet         Wallet                @relation(fields: [walletId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model Quotation {
+  id               String          @id @default(cuid())
+  tenantId         String
+  subscriptionId   String?
+  quotationNumber  String          @unique
+  status           QuotationStatus @default(DRAFT)
+  subtotal         Decimal         @db.Decimal(19, 4)
+  taxAmount        Decimal         @default(0) @db.Decimal(19, 4)
+  discountAmount   Decimal         @default(0) @db.Decimal(19, 4)
+  total            Decimal         @db.Decimal(19, 4)
+  currency         String          @default("INR") @db.VarChar(3)
+  notes            String?
+  validUntil       DateTime?
+  confirmedAt      DateTime?
+  rejectedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subscription     Subscription?   @relation(fields: [subscriptionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  lineItems        QuotationLineItem[]
+  invoices         Invoice[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([quotationNumber])
+}
+
+model QuotationLineItem {
+  id          String    @id @default(cuid())
+  quotationId String
+  description String
+  quantity    Int
+  unitPrice   Decimal   @db.Decimal(19, 4)
+  amount      Decimal   @db.Decimal(19, 4)
+  taxRate     Decimal   @default(0) @db.Decimal(5, 2)
+  createdAt   DateTime  @default(now())
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([quotationId])
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  tenantId        String
+  subscriptionId  String?
+  quotationId     String?
+  invoiceNumber   String        @unique
+  status          InvoiceStatus @default(DRAFT)
+  subtotal        Decimal       @db.Decimal(19, 4)
+  taxAmount       Decimal       @default(0) @db.Decimal(19, 4)
+  discountAmount  Decimal       @default(0) @db.Decimal(19, 4)
+  total           Decimal       @db.Decimal(19, 4)
+  currency        String        @default("INR") @db.VarChar(3)
+  dueDate         DateTime?
+  paidAt          DateTime?
+  notes           String?
+  razorpayOrderId String?       @unique
+  razorpayPaymentId String?     @unique
+  paymentStatus   PaymentStatus @default(PENDING)
+  idempotencyKey  String        @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  quotation       Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  lineItems       InvoiceLineItem[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([invoiceNumber])
+  @@index([dueDate, status])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(19, 4)
+  amount      Decimal  @db.Decimal(19, 4)
+  taxRate     Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(19, 4)
+  currency    String   @default("INR") @db.VarChar(3)
+  sku         String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, isActive])
+}
+
+model Tax {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  rate        Decimal  @db.Decimal(5, 2)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+model Discount {
+  id           String   @id @default(cuid())
+  tenantId     String
+  code         String
+  name         String
+  type         String   // FIXED | PERCENTAGE
+  value        Decimal  @db.Decimal(19, 4)
+  maxUses      Int?
+  usedCount    Int      @default(0)
+  isActive     Boolean  @default(true)
+  validFrom    DateTime @default(now())
+  validUntil   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+model Customization {
+  id             String              @id @default(cuid())
+  tenantId       String
+  name           String
+  description    String?
+  status         CustomizationStatus @default(PENDING)
+  usedFromSlots  Boolean             @default(false)
+  walletCharged  Decimal             @default(0) @db.Decimal(19, 4)
+  idempotencyKey String              @unique
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId, status])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  tenantId  String?
+  userId    String?
+  action    AuditAction
+  entityId  String?
+  entityType String?
+  metadata  Json?
+  createdAt DateTime    @default(now())
+  tenant    Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([tenantId, action, createdAt])
+  @@index([entityId, entityType])
 }
