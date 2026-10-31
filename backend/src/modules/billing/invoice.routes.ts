@@ -41,3 +41,4 @@ invoiceRoutes.patch('/invoices/:id', authorize('ADMIN', 'STAFF'), (req, res) => 
 invoiceRoutes.post('/invoices/:id/send', authorize('ADMIN', 'STAFF'), (req, res) => {
   invoiceController.sendInvoice(req, res);
 });
+

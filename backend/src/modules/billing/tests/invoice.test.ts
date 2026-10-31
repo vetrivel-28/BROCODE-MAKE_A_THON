@@ -190,6 +190,7 @@ describe('Invoice Service & Lifecycle', () => {
           quantity: 1,
           unitPrice: 100000, // Rs 1,000.00
           discountAmount: 0,
+          isTaxInclusive: false,
         },
       ],
     });
@@ -236,6 +237,7 @@ describe('Invoice Service & Lifecycle', () => {
           quantity: 1,
           unitPrice: 108000,
           discountAmount: 0,
+          isTaxInclusive: false,
         },
       ],
     });
@@ -260,7 +262,7 @@ describe('Invoice Service & Lifecycle', () => {
       customerId: 'cust_tenant_a',
       periodStart: new Date('2026-10-01'),
       periodEnd: new Date('2026-10-31'),
-      lines: [{ description: 'Item A', quantity: 1, unitPrice: 5000 }],
+      lines: [{ description: 'Item A', quantity: 1, unitPrice: 5000, discountAmount: 0, isTaxInclusive: false }],
     });
 
     // Tenant B querying Tenant A's invoice gets 404/null

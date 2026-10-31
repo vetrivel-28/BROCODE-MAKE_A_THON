@@ -19,9 +19,9 @@ export const manualCreateInvoiceSchema = z.object({
         description: z.string().min(1),
         quantity: z.number().int().positive(),
         unitPrice: z.number().int().nonnegative(),
-        discountAmount: z.number().int().nonnegative().default(0),
+        discountAmount: z.number().int().nonnegative().optional().default(0),
         taxId: z.string().optional(),
-        isTaxInclusive: z.boolean().default(false),
+        isTaxInclusive: z.boolean().optional().default(false),
         productId: z.string().optional(),
         variantId: z.string().optional(),
       })
@@ -41,9 +41,9 @@ export const patchInvoiceSchema = z.object({
         description: z.string().min(1),
         quantity: z.number().int().positive(),
         unitPrice: z.number().int().nonnegative(),
-        discountAmount: z.number().int().nonnegative().default(0),
+        discountAmount: z.number().int().nonnegative().optional().default(0),
         taxId: z.string().optional(),
-        isTaxInclusive: z.boolean().default(false),
+        isTaxInclusive: z.boolean().optional().default(false),
         productId: z.string().optional(),
         variantId: z.string().optional(),
       })
@@ -76,4 +76,3 @@ export type ManualCreateInvoiceInput = z.infer<typeof manualCreateInvoiceSchema>
 export type PatchInvoiceInput = z.infer<typeof patchInvoiceSchema>;
 export type QueryInvoicesInput = z.infer<typeof queryInvoicesSchema>;
 export type SendInvoiceInput = z.infer<typeof sendInvoiceSchema>;
-

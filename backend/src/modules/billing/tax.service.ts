@@ -84,7 +84,7 @@ export class TaxService {
    */
   public async getTaxes(
     tenantId: string,
-    query: QueryTaxInput
+    query: Partial<QueryTaxInput> = {}
   ): Promise<{ data: TaxModel[]; total: number; page: number; limit: number; totalPages: number }> {
     let taxes = Array.from(taxDatabase.values()).filter((t) => t.tenantId === tenantId);
 
@@ -197,4 +197,3 @@ export class TaxService {
 }
 
 export const taxService = new TaxService();
-
