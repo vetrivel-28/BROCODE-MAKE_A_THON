@@ -10,8 +10,9 @@ import {
   listProducts,
   listTemplates,
   suggestSeatDiscounts,
+  updateDiscount,
 } from './catalog.service.js';
-import { discountInput, listQuery, planInput, productInput, seatSuggestionQuery, templateInput } from './catalog.schemas.js';
+import { discountInput, discountParams, listQuery, planInput, productInput, seatSuggestionQuery, templateInput } from './catalog.schemas.js';
 
 function parse<T>(schema: { parse: (data: unknown) => T }, value: unknown): T {
   return schema.parse(value);
@@ -36,7 +37,7 @@ export function catalogControllers(dependencies: CatalogRouteDependencies) {
     const context = dependencies.context(request);
     const query = parse(listQuery, request.query);
     const methods = { products: listProducts, plans: listPlans, templates: listTemplates, discounts: listDiscounts };
-    return methods[kind](dependencies.prisma, context.tenantId, query.take, query.cursor);
+    return methods[kind](dependencies.prisma, context.tenantId, query);
   }, dependencies);
 
   const create = <Input,>(
@@ -61,6 +62,12 @@ export function catalogControllers(dependencies: CatalogRouteDependencies) {
     );
   }, dependencies);
 
+  const editDiscount = handler(async (request) => {
+    const context = dependencies.context(request);
+    const { discountId } = parse(discountParams, request.params);
+    return updateDiscount(dependencies.prisma, context.tenantId, discountId, parse(discountInput, request.body));
+  }, dependencies);
+
   return {
     listProducts: list('products'),
     createProduct: create(productInput, createProduct),
@@ -70,6 +77,7 @@ export function catalogControllers(dependencies: CatalogRouteDependencies) {
     createTemplate: create(templateInput, createTemplate),
     listDiscounts: list('discounts'),
     createDiscount: create(discountInput, createDiscount),
+    updateDiscount: editDiscount,
     seatSuggestions,
   };
 }

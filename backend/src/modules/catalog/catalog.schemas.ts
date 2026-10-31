@@ -77,7 +77,11 @@ export const discountInput = z.object({
 export const listQuery = z.object({
   take: z.coerce.number().int().min(1).max(100).default(25),
   cursor: id.optional(),
+  search: z.string().trim().min(1).max(160).optional(),
+  type: z.string().trim().min(1).max(80).optional(),
 });
+
+export const discountParams = z.object({ discountId: id });
 
 export const seatSuggestionQuery = z.object({
   currentSeats: z.coerce.number().int().min(0).max(100000),

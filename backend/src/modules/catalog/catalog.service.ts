@@ -7,6 +7,7 @@ type ProductInput = z.infer<typeof productInput>;
 type PlanInput = z.infer<typeof planInput>;
 type TemplateInput = z.infer<typeof templateInput>;
 type DiscountInput = z.infer<typeof discountInput>;
+type CatalogListOptions = { take: number; cursor?: string; search?: string; type?: string };
 
 function cursorPage<T extends { id: string }>(
   rows: T[],
@@ -17,15 +18,20 @@ function cursorPage<T extends { id: string }>(
   return { items, nextCursor: hasMore ? items[items.length - 1]?.id ?? null : null };
 }
 
-export async function listProducts(prisma: PrismaClient, tenantId: string, take: number, cursor?: string) {
+export async function listProducts(prisma: PrismaClient, tenantId: string, options: CatalogListOptions) {
+  const search = options.search?.trim();
   const rows = await prisma.product.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      ...(options.type ? { type: options.type } : {}),
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    },
     orderBy: { id: 'asc' },
-    take: take + 1,
-    ...(cursor ? { cursor: { tenantId_id: { tenantId, id: cursor } }, skip: 1 } : {}),
+    take: options.take + 1,
+    ...(options.cursor ? { cursor: { tenantId_id: { tenantId, id: options.cursor } }, skip: 1 } : {}),
     include: { variants: true },
   });
-  return cursorPage(rows, take);
+  return cursorPage(rows, options.take);
 }
 
 export async function createProduct(prisma: PrismaClient, tenantId: string, input: ProductInput) {
@@ -43,14 +49,18 @@ export async function createProduct(prisma: PrismaClient, tenantId: string, inpu
   });
 }
 
-export async function listPlans(prisma: PrismaClient, tenantId: string, take: number, cursor?: string) {
+export async function listPlans(prisma: PrismaClient, tenantId: string, options: CatalogListOptions) {
+  const search = options.search?.trim();
   const rows = await prisma.plan.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    },
     orderBy: { id: 'asc' },
-    take: take + 1,
-    ...(cursor ? { cursor: { tenantId_id: { tenantId, id: cursor } }, skip: 1 } : {}),
+    take: options.take + 1,
+    ...(options.cursor ? { cursor: { tenantId_id: { tenantId, id: options.cursor } }, skip: 1 } : {}),
   });
-  return cursorPage(rows, take);
+  return cursorPage(rows, options.take);
 }
 
 export async function createPlan(prisma: PrismaClient, tenantId: string, input: PlanInput) {
@@ -64,15 +74,19 @@ export async function createPlan(prisma: PrismaClient, tenantId: string, input: 
   });
 }
 
-export async function listTemplates(prisma: PrismaClient, tenantId: string, take: number, cursor?: string) {
+export async function listTemplates(prisma: PrismaClient, tenantId: string, options: CatalogListOptions) {
+  const search = options.search?.trim();
   const rows = await prisma.quotationTemplate.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    },
     orderBy: { id: 'asc' },
-    take: take + 1,
-    ...(cursor ? { cursor: { tenantId_id: { tenantId, id: cursor } }, skip: 1 } : {}),
+    take: options.take + 1,
+    ...(options.cursor ? { cursor: { tenantId_id: { tenantId, id: options.cursor } }, skip: 1 } : {}),
     include: { plan: true, lines: { include: { product: true } } },
   });
-  return cursorPage(rows, take);
+  return cursorPage(rows, options.take);
 }
 
 export async function createTemplate(prisma: PrismaClient, tenantId: string, input: TemplateInput) {
@@ -107,15 +121,19 @@ export async function createTemplate(prisma: PrismaClient, tenantId: string, inp
   });
 }
 
-export async function listDiscounts(prisma: PrismaClient, tenantId: string, take: number, cursor?: string) {
+export async function listDiscounts(prisma: PrismaClient, tenantId: string, options: CatalogListOptions) {
+  const search = options.search?.trim();
   const rows = await prisma.discountRule.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    },
     orderBy: { id: 'asc' },
-    take: take + 1,
-    ...(cursor ? { cursor: { tenantId_id: { tenantId, id: cursor } }, skip: 1 } : {}),
+    take: options.take + 1,
+    ...(options.cursor ? { cursor: { tenantId_id: { tenantId, id: options.cursor } }, skip: 1 } : {}),
     include: { targets: true },
   });
-  return cursorPage(rows, take);
+  return cursorPage(rows, options.take);
 }
 
 export async function createDiscount(prisma: PrismaClient, tenantId: string, input: DiscountInput) {
@@ -141,6 +159,51 @@ export async function createDiscount(prisma: PrismaClient, tenantId: string, inp
   });
 }
 
+export async function updateDiscount(
+  prisma: PrismaClient,
+  tenantId: string,
+  discountId: string,
+  input: DiscountInput,
+) {
+  return prisma.$transaction(async (transaction) => {
+    const existing = await transaction.discountRule.findFirst({
+      where: { id: discountId, tenantId },
+      select: { id: true, usageCount: true },
+    });
+    if (!existing) throw new Error('Discount not found in tenant');
+    if (input.usageLimit !== null && input.usageLimit !== undefined && input.usageLimit < existing.usageCount) {
+      throw new Error('Usage limit cannot be lower than the current usage count');
+    }
+    if (input.productIds.length) {
+      const count = await transaction.product.count({ where: { tenantId, id: { in: input.productIds } } });
+      if (count !== new Set(input.productIds).size) throw new Error('One or more products were not found in tenant');
+    }
+    await transaction.discountRule.updateMany({
+      where: { id: discountId, tenantId },
+      data: {
+        name: input.name,
+        kind: input.kind,
+        value: input.value,
+        minimumPurchase: input.minimumPurchase ?? null,
+        minimumQuantity: input.minimumQuantity ?? null,
+        startsAt: new Date(input.startsAt),
+        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        usageLimit: input.usageLimit ?? null,
+        appliesTo: input.appliesTo,
+      },
+    });
+    await transaction.discountProduct.deleteMany({ where: { tenantId, discountId } });
+    if (input.productIds.length) {
+      await transaction.discountProduct.createMany({
+        data: input.productIds.map((productId) => ({ tenantId, discountId, productId })),
+      });
+    }
+    return transaction.discountRule.findFirstOrThrow({
+      where: { id: discountId, tenantId },
+      include: { targets: true },
+    });
+  });
+}
 export async function suggestSeatDiscounts(
   prisma: PrismaClient,
   tenantId: string,
@@ -156,7 +219,7 @@ export async function suggestSeatDiscounts(
       appliesTo: 'SUBSCRIPTIONS',
       startsAt: { lte: now },
       AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
-      OR: [{ minimumQuantity: null }, { minimumQuantity: { lte: suggestedSeats } }],
+      minimumQuantity: { gt: currentSeats, lte: suggestedSeats },
     },
     orderBy: { id: 'asc' },
     take: page.take + 1,

@@ -64,6 +64,7 @@ export function createCatalogRouter(dependencies: CatalogRouteDependencies): Rou
   router.post('/quotation-templates', catalogEditor, templateAccess, controllers.createTemplate);
   router.get('/discounts', admin, discountAccess, controllers.listDiscounts);
   router.post('/discounts', admin, discountAccess, controllers.createDiscount);
+  router.put('/discounts/:discountId', admin, discountAccess, controllers.updateDiscount);
   router.get('/discounts/seat-suggestions', admin, discountAccess, controllers.seatSuggestions);
   return router;
 }
