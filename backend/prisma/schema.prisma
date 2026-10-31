@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User roles in LoopDesk
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+// Tiers sold by Brightloop Software
+enum TierCode {
+  FREE
+  STANDARD
+  CUSTOM
+}
+
+// Tenant represents an owner's organization / workspace
+model Tenant {
+  id                  String               @id @default(uuid())
+  name                String
+  slug                String               @unique
+  industry            String?              // retail, saas, gym, coaching
+  payBeyondCap        Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  users               User[]
+  tenantSubscriptions TenantSubscription[]
+
+  @@index([slug])
+}
+
+// User accounts within a tenant (or cross-tenant SUPER_ADMIN)
+model User {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  email               String               @unique
+  passwordHash        String
+  fullName            String
+  role                UserRole             @default(STAFF)
+  resetPasswordToken  String?
+  resetPasswordExpires DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens       RefreshToken[]
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+// Refresh tokens for JWT rotation
+model RefreshToken {
+  id                  String               @id @default(uuid())
+  userId              String
+  tokenHash           String               @unique
+  expiresAt           DateTime
+  revoked             Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// PlatformPlan defines tiers (Free, Standard, Custom)
+model PlatformPlan {
+  id                  String               @id @default(uuid())
+  tierCode            TierCode             @unique
+  name                String
+  priceMonthlyPaise   Int                  // 0, 58000, 108000
+  priceYearlyPaise    Int                  // In paise
+  customizationSlots  Int                  // 0, 2, 10
+  description         String
+
+  entitlements        Entitlement[]
+  tenantSubscriptions TenantSubscription[]
+}
+
+// Entitlement defines features available per PlatformPlan
+model Entitlement {
+  id                  String               @id @default(uuid())
+  platformPlanId      String
+  featureKey          String               // e.g. "auto_billing", "custom_dashboard", "composable_workspace"
+  description         String?
+
+  platformPlan        PlatformPlan         @relation(fields: [platformPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([platformPlanId, featureKey])
+}
+
+// TenantSubscription tracks which PlatformPlan a tenant currently holds
+model TenantSubscription {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  platformPlanId      String
+  status              String               // ACTIVE, CANCELLED, PAST_DUE
+  currentPeriodStart  DateTime
+  currentPeriodEnd    DateTime
+  razorpayPaymentId   String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  platformPlan        PlatformPlan         @relation(fields: [platformPlanId], references: [id])
+
+  @@index([tenantId])
+}
