@@ -22,7 +22,7 @@ import {
   seedP3StarterPack,
   getP3UsedCustomizationsCount,
   getP3WalletBalance
-} from './identity.contracts.ts';
+} from './identity.contracts.js';
 
 // In-memory memory store for standalone / testing mode if Prisma DB is not running
 interface InMemoryState {
@@ -872,3 +872,4 @@ export class IdentityService {
     initMemoryPlans();
   }
 }
+

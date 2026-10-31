@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #F7F8FC;
+  color: #1B1F3B;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-handwritten {
+  font-family: 'Caveat', cursive;
+}

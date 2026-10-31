@@ -226,3 +226,4 @@ export const PrivilegePassportPage: React.FC = () => {
     </div>
   );
 };
+

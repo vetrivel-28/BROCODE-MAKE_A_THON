@@ -63,11 +63,10 @@ export const TierUpgradeModal: React.FC<TierUpgradeModalProps> = ({
         <div className="space-y-3 my-6">
           <div
             onClick={() => setSelectedTier('STANDARD')}
-            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-              selectedTier === 'STANDARD'
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedTier === 'STANDARD'
                 ? 'border-[#6C4BFF] bg-purple-50/50 ring-2 ring-[#6C4BFF]'
                 : 'border-gray-200 hover:border-gray-300'
-            }`}
+              }`}
           >
             <div className="flex justify-between items-center">
               <div>
@@ -84,12 +83,13 @@ export const TierUpgradeModal: React.FC<TierUpgradeModalProps> = ({
           </div>
 
           <div
+
             onClick={() => setSelectedTier('CUSTOM')}
-            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-              selectedTier === 'CUSTOM'
+
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedTier === 'CUSTOM'
                 ? 'border-[#00C2A8] bg-teal-50/50 ring-2 ring-[#00C2A8]'
                 : 'border-gray-200 hover:border-gray-300'
-            }`}
+              }`}
           >
             <div className="flex justify-between items-center">
               <div>
@@ -135,3 +135,4 @@ export const TierUpgradeModal: React.FC<TierUpgradeModalProps> = ({
     </div>
   );
 };
+
