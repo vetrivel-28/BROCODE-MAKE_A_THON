@@ -10,6 +10,15 @@ export default function PlanBuilderPage() {
     availableFrom: '', availableUntil: '', autoClose: false, closable: true, pausable: false, renewable: false,
   });
   const [message, setMessage] = useState('');
+  const availabilityEnd = form.availableUntil
+    ? new Date(`${form.availableUntil}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'its availability end date';
+  const enabledPlanFlags = [
+    form.autoClose ? `Closes automatically on ${availabilityEnd}` : '',
+    form.closable ? 'the customer can close it' : '',
+    form.pausable ? 'the customer can pause it' : '',
+    form.renewable ? 'it can be renewed' : '',
+  ].filter(Boolean);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage('');
@@ -39,7 +48,11 @@ export default function PlanBuilderPage() {
             <input type="checkbox" checked={form[flag]} onChange={(e) => setForm({ ...form, [flag]: e.target.checked })} />{flag.replace(/([A-Z])/g, ' $1')}
           </label>)}
         </fieldset>
-        {message && <p role="status">{message}</p>}
+        <div className="rounded-xl bg-[#F3F0FF] p-4 text-sm">
+          <p className="font-semibold">Plan behavior preview</p>
+          <p className="mt-1 text-slate-600">{enabledPlanFlags.length ? `${enabledPlanFlags.join('; ')}.` : 'No lifecycle actions are enabled.'} Minimum {form.minimumQuantity || 1} {Number(form.minimumQuantity) === 1 ? 'seat' : 'seats'} · ₹{form.price || '0'} / {form.billingPeriod.toLocaleLowerCase()}.</p>
+        </div>
+        {message && <p role="status" className={message.includes('Unable') || message.includes('must') ? 'text-rose-700' : 'text-emerald-700'}>{message}</p>}
         <button className="rounded-2xl bg-[#6C4BFF] px-5 py-3 font-semibold text-white">Save plan</button>
       </form>
     </main>

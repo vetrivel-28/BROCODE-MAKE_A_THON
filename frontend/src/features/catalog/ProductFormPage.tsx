@@ -39,7 +39,10 @@ export default function ProductFormPage() {
           {variants.map((variant, index) => <div key={index} className="grid gap-2 sm:grid-cols-3">
             <input aria-label="Variant attribute" placeholder="Attribute" value={variant.attribute} onChange={(event) => setVariants((all) => all.map((item, i) => i === index ? { ...item, attribute: event.target.value } : item))} className="rounded-xl border p-3" />
             <input aria-label="Variant value" placeholder="Value" value={variant.value} onChange={(event) => setVariants((all) => all.map((item, i) => i === index ? { ...item, value: event.target.value } : item))} className="rounded-xl border p-3" />
-            <input aria-label="Extra price" type="number" min="0" step="0.01" placeholder="Extra price" value={variant.extraPrice} onChange={(event) => setVariants((all) => all.map((item, i) => i === index ? { ...item, extraPrice: event.target.value } : item))} className="rounded-xl border p-3" />
+            <div className="flex flex-col gap-1">
+              <input aria-label="Extra price" type="number" min="0" step="0.01" placeholder="Extra price" value={variant.extraPrice} onChange={(event) => setVariants((all) => all.map((item, i) => i === index ? { ...item, extraPrice: event.target.value } : item))} className="rounded-xl border p-3" />
+              <span className="text-xs text-slate-500">Result: ₹{((Number(salesPrice) || 0) + (Number(variant.extraPrice) || 0)).toFixed(2)}</span>
+            </div>
           </div>)}
           <button type="button" onClick={() => setVariants((all) => [...all, { attribute: '', value: '', extraPrice: '0' }])} className="rounded-xl border px-4 py-2">Add variant</button>
         </fieldset>
