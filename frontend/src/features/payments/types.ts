@@ -23,3 +23,4 @@ export interface PaymentsResponse {
   limit: number;
   totalPages: number;
 }
+

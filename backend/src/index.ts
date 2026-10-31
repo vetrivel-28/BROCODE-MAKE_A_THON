@@ -11,3 +11,4 @@ taxService.seedDefaultTaxes('tenant_default').then(() => {
 app.listen(PORT, () => {
   console.log(`LoopDesk Billing & Payments Service listening on port ${PORT}`);
 });
+

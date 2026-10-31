@@ -422,3 +422,4 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
     </div>
   );
 };
+

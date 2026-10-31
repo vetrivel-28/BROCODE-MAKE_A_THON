@@ -76,3 +76,4 @@ export function Table<T extends { id?: string | number }>({
     </div>
   );
 }
+

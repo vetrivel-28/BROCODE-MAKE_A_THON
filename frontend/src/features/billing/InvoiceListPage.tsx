@@ -321,3 +321,4 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({
     </div>
   );
 };
+

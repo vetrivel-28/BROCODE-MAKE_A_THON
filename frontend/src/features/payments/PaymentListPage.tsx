@@ -188,3 +188,4 @@ export const PaymentListPage: React.FC<PaymentListPageProps> = ({ onSelectInvoic
     </div>
   );
 };
+
