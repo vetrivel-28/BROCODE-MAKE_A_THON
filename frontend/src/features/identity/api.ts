@@ -61,7 +61,13 @@ export interface PrivilegePassportData {
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('loopdesk_access_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {
+    'x-tenant-id': 'tenant-demo-1',
+    'x-user-role': 'ADMIN'
+  };
 }
 
 export const identityApi = {

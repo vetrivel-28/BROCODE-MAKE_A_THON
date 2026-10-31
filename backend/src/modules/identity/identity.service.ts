@@ -115,6 +115,55 @@ function initMemoryPlans() {
   ].forEach((f) =>
     memoryStore.entitlements.set(`plan-custom-${f}`, { platformPlanId: 'plan-custom', featureKey: f })
   );
+
+  // Pre-seed demo tenant and accounts for instant testing
+  const demoTenant = {
+    id: 'tenant-demo-1',
+    name: 'Brightloop Software',
+    slug: 'brightloop-software',
+    industry: 'saas',
+    payBeyondCap: false,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  memoryStore.tenants.set('tenant-demo-1', demoTenant);
+  memoryStore.subscriptions.set('tenant-demo-1', {
+    id: 'sub-demo-01',
+    tenantId: 'tenant-demo-1',
+    platformPlanId: 'plan-standard',
+    status: 'ACTIVE',
+    currentPeriodStart: new Date(),
+    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  });
+
+  const salt = bcrypt.genSaltSync(10);
+  const hash123 = bcrypt.hashSync('Password@123', salt);
+  const hashSecure = bcrypt.hashSync('SecurePassword123#', salt);
+
+  const demoAdmin1 = {
+    id: 'user-demo-admin-1',
+    tenantId: 'tenant-demo-1',
+    email: 'admin@brightloop.com',
+    fullName: 'Brightloop Admin',
+    passwordHash: hash123,
+    role: 'ADMIN',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  const demoAdmin2 = {
+    id: 'user-demo-admin-2',
+    tenantId: 'tenant-demo-1',
+    email: 'aarav@brightloop.com',
+    fullName: 'Aarav Sharma',
+    passwordHash: hashSecure,
+    role: 'ADMIN',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  memoryStore.users.set('admin@brightloop.com', demoAdmin1);
+  memoryStore.users.set('aarav@brightloop.com', demoAdmin2);
 }
 
 initMemoryPlans();

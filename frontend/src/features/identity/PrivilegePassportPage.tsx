@@ -33,14 +33,39 @@ export const PrivilegePassportPage: React.FC = () => {
   }
 
   if (error || !passport) {
+    const handleQuickLogin = async () => {
+      try {
+        setLoading(true);
+        const res = await identityApi.login('aarav@brightloop.com', 'SecurePassword123#');
+        localStorage.setItem('loopdesk_access_token', res.accessToken);
+        localStorage.setItem('loopdesk_refresh_token', res.refreshToken);
+        localStorage.setItem('loopdesk_user', JSON.stringify(res.user));
+        localStorage.setItem('loopdesk_tenant', JSON.stringify(res.tenant));
+        setError(null);
+        await fetchPassport();
+      } catch (err: any) {
+        setError(err.message || 'Quick login failed');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     return (
       <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center p-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-200 max-w-md w-full text-center">
           <p className="text-red-600 font-bold mb-2">Error Loading Passport</p>
           <p className="text-xs text-gray-500 mb-4">{error || 'Session expired or invalid'}</p>
-          <a href="/login" className="px-4 py-2 bg-[#6C4BFF] text-white text-xs font-bold rounded-xl">
-            Return to Login
-          </a>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={handleQuickLogin}
+              className="px-4 py-2 bg-[#6C4BFF] hover:bg-[#5839e6] text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            >
+              Quick Demo Login
+            </button>
+            <a href="/login" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all">
+              Return to Login
+            </a>
+          </div>
         </div>
       </div>
     );

@@ -53,7 +53,10 @@ export function createApp(idService?: IdentityService) {
   const paymentsRouter = createPaymentsRouter(paymentsService, identityService);
   const insightsRouter = createInsightsRouter(insightsService, billingService, subscriptionsService);
 
-  // Mount at /api directly (for Person 3 and Person 4 frontends calling /api/invoices, /api/taxes, etc.)
+  // Mount at /api directly (for Person 1, 2, 3, and 4 frontends)
+  app.use('/api', identityRouter);
+  app.use('/api/auth', identityRouter);
+  app.use('/auth', identityRouter);
   app.use('/api', billingRouter);
   app.use('/api', paymentsRouter);
   app.use('/api', catalogRouter);
