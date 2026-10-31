@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { env } from "./config/env.js";
 import { healthRouter } from "./modules/health/health.routes.js";
+import { insightsRouter } from "./modules/insights/insights.routes.js";
 
 export const app = express();
 
@@ -12,3 +13,4 @@ app.use(
 );
 app.use(express.json());
 app.use("/api", healthRouter);
+app.use("/api/insights", insightsRouter);
