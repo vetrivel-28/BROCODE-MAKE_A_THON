@@ -18,3 +18,4 @@ paymentRoutes.get('/invoices/:id/payments', authorize('ADMIN', 'STAFF', 'SUPER_A
 paymentRoutes.post('/invoices/:id/payments', authorize('ADMIN', 'STAFF'), (req, res) => {
   paymentController.recordPayment(req, res);
 });
+

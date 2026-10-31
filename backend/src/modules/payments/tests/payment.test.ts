@@ -27,7 +27,7 @@ describe('Payment Engine & Settlement', () => {
       customerId: 'cust_pay_1',
       periodStart: new Date('2026-10-01'),
       periodEnd: new Date('2026-10-31'),
-      lines: [{ description: 'Test Item', quantity: 1, unitPrice: 50000 }],
+      lines: [{ description: 'Test Item', quantity: 1, unitPrice: 50000, discountAmount: 0, isTaxInclusive: false }],
     });
     assert.equal(draft.status, 'DRAFT');
 
@@ -54,7 +54,7 @@ describe('Payment Engine & Settlement', () => {
       customerId: 'cust_pay_2',
       periodStart: new Date('2026-10-01'),
       periodEnd: new Date('2026-10-31'),
-      lines: [{ description: 'Software Plan', quantity: 1, unitPrice: 100000 }],
+      lines: [{ description: 'Software Plan', quantity: 1, unitPrice: 100000, discountAmount: 0, isTaxInclusive: false }],
     });
     const confirmed = await invoiceService.confirmInvoice(tenantId, draft.id);
     assert.equal(confirmed.status, 'CONFIRMED');
@@ -100,7 +100,7 @@ describe('Payment Engine & Settlement', () => {
       customerId: 'cust_pay_3',
       periodStart: new Date('2026-10-01'),
       periodEnd: new Date('2026-10-31'),
-      lines: [{ description: 'Seat License', quantity: 1, unitPrice: 58000 }],
+      lines: [{ description: 'Seat License', quantity: 1, unitPrice: 58000, discountAmount: 0, isTaxInclusive: false }],
     });
     const confirmed = await invoiceService.confirmInvoice(tenantId, draft.id);
     assert.equal(confirmed.balance, 58000);
@@ -128,7 +128,7 @@ describe('Payment Engine & Settlement', () => {
       customerId: 'cust_pay_4',
       periodStart: new Date('2026-10-01'),
       periodEnd: new Date('2026-10-31'),
-      lines: [{ description: 'Add-on module', quantity: 1, unitPrice: 30000 }],
+      lines: [{ description: 'Add-on module', quantity: 1, unitPrice: 30000, discountAmount: 0, isTaxInclusive: false }],
     });
     const confirmed = await invoiceService.confirmInvoice(tenantId, draft.id);
 
@@ -158,7 +158,7 @@ describe('Payment Engine & Settlement', () => {
       customerId: 'cust_pay_5',
       periodStart: new Date('2026-10-01'),
       periodEnd: new Date('2026-10-31'),
-      lines: [{ description: 'One-off setup', quantity: 1, unitPrice: 20000 }],
+      lines: [{ description: 'One-off setup', quantity: 1, unitPrice: 20000, discountAmount: 0, isTaxInclusive: false }],
     });
     const confirmed = await invoiceService.confirmInvoice(tenantId, draft.id);
 
