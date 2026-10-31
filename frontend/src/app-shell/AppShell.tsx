@@ -6,6 +6,10 @@ import { LauncherGrid } from "./LauncherGrid";
 import { CustomerSubscriptions } from "./portal/CustomerSubscriptions";
 import { CustomerInvoices } from "./portal/CustomerInvoices";
 import { useToast } from "../shared/components/Toast";
+import { RevenueDashboard } from "../features/insights/RevenueDashboard";
+import { CustomerHealthBoard } from "../features/insights/CustomerHealthBoard";
+import { CustomizationStudio } from "../features/insights/CustomizationStudio";
+import { AskRevenueChat } from "../features/insights/AskRevenueChat";
 
 export interface AppShellProps {
   initialTier?: "free" | "standard" | "custom";
@@ -137,57 +141,44 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {activeApp === "portal-invoices" && <CustomerInvoices />}
 
-        {/* Phase 4 Slot for Revenue Dashboard */}
-        {activeApp === "insights-dashboard" &&
-          (renderInsightsDashboard ? (
+        {/* Phase 4: Revenue Dashboard */}
+        {activeApp === "insights-dashboard" && (
+          renderInsightsDashboard ? (
             renderInsightsDashboard()
           ) : (
-            <div className="max-w-4xl mx-auto my-12 p-8 bg-white rounded-2xl border border-[#E9EAF2] text-center shadow-xs">
-              <h2 className="text-xl font-bold text-[#1B1F3B]">Revenue Intelligence Dashboard</h2>
-              <p className="text-xs text-gray-500 mt-2">
-                MRR, ARR, churn, collections, and 3-month forecast will load here in Phase 4!
-              </p>
-            </div>
-          ))}
+            <RevenueDashboard
+              onOpenAskAi={() => setActiveApp("ask-revenue-ai")}
+              onOpenHealthBoard={() => setActiveApp("health-board")}
+            />
+          )
+        )}
 
-        {/* Phase 4 Slot for Customer Health */}
-        {activeApp === "health-board" &&
-          (renderHealthBoard ? (
+        {/* Phase 4: Customer Health Score Board */}
+        {activeApp === "health-board" && (
+          renderHealthBoard ? (
             renderHealthBoard()
           ) : (
-            <div className="max-w-4xl mx-auto my-12 p-8 bg-white rounded-2xl border border-[#E9EAF2] text-center shadow-xs">
-              <h2 className="text-xl font-bold text-[#1B1F3B]">Customer Health Score Board</h2>
-              <p className="text-xs text-gray-500 mt-2">
-                Green, Amber, Red punctuality scores will load here in Phase 4!
-              </p>
-            </div>
-          ))}
+            <CustomerHealthBoard />
+          )
+        )}
 
-        {/* Phase 4 Slot for Customization Studio */}
-        {activeApp === "customization-studio" &&
-          (renderCustomizationStudio ? (
+        {/* Phase 4: Customization Studio */}
+        {activeApp === "customization-studio" && (
+          renderCustomizationStudio ? (
             renderCustomizationStudio()
           ) : (
-            <div className="max-w-4xl mx-auto my-12 p-8 bg-white rounded-2xl border border-[#E9EAF2] text-center shadow-xs">
-              <h2 className="text-xl font-bold text-[#1B1F3B]">Customization Studio</h2>
-              <p className="text-xs text-gray-500 mt-2">
-                Interactive theme customizer and slot price meter will load here in Phase 4!
-              </p>
-            </div>
-          ))}
+            <CustomizationStudio currentTier={tier} />
+          )
+        )}
 
-        {/* Phase 4 Slot for Ask Revenue AI */}
-        {activeApp === "ask-revenue-ai" &&
-          (renderAskRevenueAi ? (
+        {/* Phase 4: Ask Revenue AI Chat */}
+        {activeApp === "ask-revenue-ai" && (
+          renderAskRevenueAi ? (
             renderAskRevenueAi()
           ) : (
-            <div className="max-w-4xl mx-auto my-12 p-8 bg-white rounded-2xl border border-[#E9EAF2] text-center shadow-xs">
-              <h2 className="text-xl font-bold text-[#1B1F3B]">Ask Your Revenue AI</h2>
-              <p className="text-xs text-gray-500 mt-2">
-                Claude LLM assistant over revenue data will load here in Phase 4!
-              </p>
-            </div>
-          ))}
+            <AskRevenueChat />
+          )
+        )}
 
         {/* Bridge for teammate modules (P1, P2, P3) */}
         {[
