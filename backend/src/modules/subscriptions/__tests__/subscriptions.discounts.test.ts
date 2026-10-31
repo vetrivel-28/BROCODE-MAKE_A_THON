@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Prisma } from '../../../generated/prisma/client.js';
-import { isDiscountEligible, recordDiscountUsage } from '../subscriptions.discounts.js';
+import {
+  getDiscountPurchaseBase,
+  isDiscountEligible,
+  recordDiscountUsage,
+} from '../subscriptions.discounts.js';
 import type { TenantTransaction } from '../subscriptions.types.js';
 
 describe('discount eligibility', () => {
@@ -12,10 +15,10 @@ describe('discount eligibility', () => {
       endsAt: new Date('2026-11-01T00:00:00.000Z'),
       usageLimit: 10,
       usageCount: 9,
-      minimumPurchase: new Prisma.Decimal(100),
+      minimumPurchase: '100.00',
       minimumQuantity: 5,
       periodStart,
-      purchaseAmount: new Prisma.Decimal(150),
+      purchaseAmount: '150.00',
       quantity: 5,
     })).toBe(true);
   });
@@ -75,15 +78,27 @@ describe('discount eligibility', () => {
       endsAt: null,
       usageLimit: 2,
       usageCount: 1,
-      minimumPurchase: new Prisma.Decimal(100),
+      minimumPurchase: '100.00',
       minimumQuantity: 4,
       periodStart,
-      purchaseAmount: new Prisma.Decimal(150),
+      purchaseAmount: '150.00',
       quantity: 5,
     };
     expect(isDiscountEligible({ ...base, periodStart: new Date('2026-08-01T00:00:00.000Z') })).toBe(false);
-    expect(isDiscountEligible({ ...base, purchaseAmount: new Prisma.Decimal(99) })).toBe(false);
+    expect(isDiscountEligible({ ...base, purchaseAmount: '99.00' })).toBe(false);
     expect(isDiscountEligible({ ...base, quantity: 3 })).toBe(false);
     expect(isDiscountEligible({ ...base, usageCount: 2 })).toBe(false);
+  });
+
+  it('selects product-targeted or full subscription purchase bases', () => {
+    const lines = [
+      { productId: 'product-a', quantity: 2, amount: '25.50' },
+      { productId: 'product-b', quantity: 3, amount: '100.00' },
+    ];
+    expect(getDiscountPurchaseBase('PRODUCTS', ['product-a'], lines, '580.00', 5))
+      .toEqual({ purchaseAmount: '25.50', quantity: 2 });
+    expect(getDiscountPurchaseBase('PRODUCTS', ['missing'], lines, '580.00', 5)).toBeNull();
+    expect(getDiscountPurchaseBase('SUBSCRIPTIONS', [], lines, '580.00', 5))
+      .toEqual({ purchaseAmount: '3025.50', quantity: 5 });
   });
 });

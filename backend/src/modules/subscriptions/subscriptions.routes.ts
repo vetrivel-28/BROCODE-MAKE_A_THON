@@ -27,7 +27,7 @@ export function createSubscriptionsRouter(dependencies: SubscriptionRouteDepende
   router.get('/:subscriptionId', dependencies.requireRole('SUPER_ADMIN', 'ADMIN', 'STAFF', 'CUSTOMER'), featureGate, controllers.details);
   router.post('/:subscriptionId/transitions', dependencies.requireRole('SUPER_ADMIN', 'ADMIN', 'STAFF', 'CUSTOMER'), featureGate, controllers.transition);
   router.get('/:subscriptionId/timeline', dependencies.requireRole('SUPER_ADMIN', 'ADMIN', 'STAFF', 'CUSTOMER'), featureGate, controllers.timeline);
-  router.get('/:subscriptionId/applicable-discounts', dependencies.requireRole('SUPER_ADMIN', 'ADMIN', 'STAFF'), featureGate, controllers.applicableDiscounts);
+  router.get('/:subscriptionId/applicable-discounts', dependencies.requireRole('SUPER_ADMIN', 'ADMIN', 'STAFF', 'CUSTOMER'), featureGate, controllers.applicableDiscounts);
   router.post('/discount-usage', dependencies.requireRole('SUPER_ADMIN', 'ADMIN'), featureGate, controllers.recordUsage);
   return router;
 }

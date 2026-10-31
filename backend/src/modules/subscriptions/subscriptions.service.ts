@@ -4,6 +4,7 @@ import type { createFromTemplateInput } from './subscriptions.schemas.js';
 import type { z } from 'zod';
 import { resolveSubscriptionTransition } from './subscriptions.state-machine.js';
 import { nextInvoiceDate } from './subscriptions.billing.js';
+import { assertPlanSelectionAllowed } from './subscriptions.plan-guards.js';
 
 type CreateFromTemplateInput = z.infer<typeof createFromTemplateInput>;
 
@@ -14,22 +15,54 @@ function startOfUtcDay(date: Date): Date {
 export async function listSubscriptions(
   prisma: PrismaClient,
   tenantId: string,
-  query: { take: number; cursor?: string; status?: SubscriptionStatus; customerId?: string },
+  query: {
+    take: number;
+    cursor?: string;
+    status?: SubscriptionStatus;
+    customerId?: string;
+    search?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  },
 ) {
-  const rows = await prisma.subscription.findMany({
+  const search = query.search?.trim();
+  const numberSearch = search && /^\d{1,20}$/.test(search) ? BigInt(search) : undefined;
+  const [rows, statusRows] = await Promise.all([
+    prisma.subscription.findMany({
     where: {
       tenantId,
       ...(query.status ? { status: query.status } : {}),
       ...(query.customerId ? { customerId: query.customerId } : {}),
+      ...(query.fromDate || query.toDate ? {
+        startDate: {
+          ...(query.fromDate ? { gte: query.fromDate } : {}),
+          ...(query.toDate ? { lte: new Date(query.toDate.getTime() + 86_399_999) } : {}),
+        },
+      } : {}),
+      ...(search ? {
+        OR: [
+          { customerId: { contains: search, mode: 'insensitive' } },
+          { planId: { contains: search, mode: 'insensitive' } },
+          { plan: { is: { name: { contains: search, mode: 'insensitive' } } } },
+          ...(numberSearch === undefined ? [] : [{ number: numberSearch }]),
+        ],
+      } : {}),
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     take: query.take + 1,
     ...(query.cursor ? { cursor: { tenantId_id: { tenantId, id: query.cursor } }, skip: 1 } : {}),
     include: { plan: true, lines: { include: { product: true } } },
-  });
+    }),
+    prisma.subscription.groupBy({ by: ['status'], where: { tenantId }, _count: { _all: true } }),
+  ]);
   const hasMore = rows.length > query.take;
   const items = hasMore ? rows.slice(0, query.take) : rows;
-  return { items, nextCursor: hasMore ? items[items.length - 1]?.id ?? null : null };
+  const statuses: SubscriptionStatus[] = ['DRAFT', 'QUOTATION', 'CONFIRMED', 'ACTIVE', 'PAUSED', 'CLOSED'];
+  const statusCounts = Object.fromEntries(statuses.map((status) => [
+    status,
+    statusRows.find((row) => row.status === status)?._count._all ?? 0,
+  ])) as Record<SubscriptionStatus, number>;
+  return { items, nextCursor: hasMore ? items[items.length - 1]?.id ?? null : null, statusCounts };
 }
 
 export async function getSubscription(
@@ -66,14 +99,8 @@ export async function createSubscriptionFromTemplate(
       });
       if (!template) throw new Error('Quotation template not found in tenant');
       const plan = template.plan;
-      const availableFrom = plan.availableFrom;
-      const availableUntil = plan.availableUntil;
       const startDate = new Date(input.startDate);
-      if (startDate < startOfUtcDay(new Date())) throw new Error('Subscription start date cannot be in the past');
-      if ((availableFrom && startDate < availableFrom) || (availableUntil && startDate > availableUntil)) {
-        throw new Error('Plan is unavailable on the requested start date');
-      }
-      if (input.quantity < plan.minimumQuantity) throw new Error('Minimum plan quantity is not met');
+      assertPlanSelectionAllowed(plan, startDate, input.quantity);
 
       const now = new Date();
       const quotationExpiresAt = new Date(now);
@@ -204,7 +231,6 @@ export async function transitionSubscription(
           include: { plan: true, lines: { include: { product: true } } },
         });
       }
-    }
 
       const now = new Date();
       const expired = subscription.expiryDate !== null

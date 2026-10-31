@@ -12,8 +12,10 @@ export interface TenantTransaction {
 
 export interface ApplicableDiscount {
   discountId: string;
+  name: string;
   kind: 'FIXED' | 'PERCENT';
   value: Prisma.Decimal;
+  amount: string;
   appliesTo: 'PRODUCTS' | 'SUBSCRIPTIONS';
   productIds: readonly string[];
 }

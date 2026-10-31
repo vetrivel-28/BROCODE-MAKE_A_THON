@@ -116,6 +116,18 @@ export function subscriptionsControllers(dependencies: SubscriptionRouteDependen
     const context = dependencies.context(request);
     const { subscriptionId } = subscriptionParams.parse(request.params);
     const query = applicableDiscountsQuery.parse(request.query);
+    if (context.role === 'CUSTOMER') {
+      if (!context.customerId) throw new Error('Customer identity is required');
+      const owned = await dependencies.prisma.subscription.findFirst({
+        where: {
+          id: subscriptionId,
+          tenantId: context.tenantId,
+          customerId: context.customerId,
+        },
+        select: { id: true },
+      });
+      if (!owned) throw new Error('Subscription not found in tenant');
+    }
     return dependencies.prisma.$transaction((prisma) =>
       getApplicableDiscounts({ prisma, tenantId: context.tenantId }, subscriptionId, new Date(query.periodStart)));
   }, dependencies);

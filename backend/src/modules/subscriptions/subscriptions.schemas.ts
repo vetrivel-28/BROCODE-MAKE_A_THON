@@ -32,7 +32,13 @@ export const subscriptionListQuery = z.object({
   cursor: id.optional(),
   status: z.enum(['DRAFT', 'QUOTATION', 'CONFIRMED', 'ACTIVE', 'PAUSED', 'CLOSED']).optional(),
   customerId: id.optional(),
-});
+  search: z.string().trim().min(1).max(160).optional(),
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
+}).refine(
+  (value) => !value.fromDate || !value.toDate || value.fromDate <= value.toDate,
+  { message: 'Date range end must be on or after its start', path: ['toDate'] },
+);
 
 export const dueSubscriptionQuery = z.object({
   take: z.coerce.number().int().min(1).max(100).default(50),

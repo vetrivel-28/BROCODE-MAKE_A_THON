@@ -1,26 +1,12 @@
-import { Prisma } from '../../generated/prisma/client.js';
 import type { ApplicableDiscount, TenantTransaction } from './subscriptions.types.js';
-
-export interface DiscountEligibilityInput {
-  startsAt: Date;
-  endsAt: Date | null;
-  usageLimit: number | null;
-  usageCount: number;
-  minimumPurchase: Prisma.Decimal | null;
-  minimumQuantity: number | null;
-  periodStart: Date;
-  purchaseAmount: Prisma.Decimal;
-  quantity: number;
-}
-
-export function isDiscountEligible(input: DiscountEligibilityInput): boolean {
-  return Number.isFinite(input.periodStart.getTime())
-    && input.periodStart >= input.startsAt
-    && (!input.endsAt || input.periodStart <= input.endsAt)
-    && (input.usageLimit === null || input.usageCount < input.usageLimit)
-    && (!input.minimumPurchase || input.purchaseAmount.gte(input.minimumPurchase))
-    && (input.minimumQuantity === null || input.quantity >= input.minimumQuantity);
-}
+import { calculateDiscountAmount, getDiscountPurchaseBase, isDiscountEligible } from './subscriptions.discount-logic.js';
+export {
+  calculateDiscountAmount,
+  getDiscountPurchaseBase,
+  isDiscountEligible,
+  multiplyMoney,
+  sumMoney,
+} from './subscriptions.discount-logic.js';
 
 export async function getApplicableDiscounts(
   tx: TenantTransaction,
@@ -52,40 +38,39 @@ export async function getApplicableDiscounts(
   const applicable: ApplicableDiscount[] = [];
   for (const rule of rules) {
     const targetIds = rule.targets.map((target) => target.productId);
-    const productLines = rule.appliesTo === 'PRODUCTS'
-      ? subscription.lines.filter((line) => targetIds.includes(line.productId))
-      : subscription.lines;
-    if (rule.appliesTo === 'PRODUCTS' && productLines.length === 0) continue;
-
-    const productAmount = productLines.reduce(
-      (total, line) => total.plus(line.amount),
-      new Prisma.Decimal(0),
+    const purchaseBase = getDiscountPurchaseBase(
+      rule.appliesTo,
+      targetIds,
+      subscription.lines.map((line) => ({
+        productId: line.productId,
+        quantity: line.quantity,
+        amount: line.amount.toFixed(2),
+      })),
+      subscription.plan.price.toFixed(2),
+      subscriptionQuantity,
     );
-    const purchaseAmount = rule.appliesTo === 'SUBSCRIPTIONS'
-      ? productAmount.plus(subscription.plan.price.mul(subscriptionQuantity))
-      : productAmount;
-    const quantity = rule.appliesTo === 'SUBSCRIPTIONS'
-      ? subscriptionQuantity
-      : productLines.reduce((total, line) => total + line.quantity, 0);
+    if (!purchaseBase) continue;
     if (!isDiscountEligible({
       startsAt: rule.startsAt,
       endsAt: rule.endsAt,
       usageLimit: rule.usageLimit,
       usageCount: rule.usageCount,
-      minimumPurchase: rule.minimumPurchase,
+      minimumPurchase: rule.minimumPurchase?.toString() ?? null,
       minimumQuantity: rule.minimumQuantity,
       periodStart,
-      purchaseAmount,
-      quantity,
+      purchaseAmount: purchaseBase.purchaseAmount,
+      quantity: purchaseBase.quantity,
     })) continue;
 
     applicable.push({
-        discountId: rule.id,
-        kind: rule.kind,
-        value: rule.value,
-        appliesTo: rule.appliesTo,
-        productIds: targetIds,
-      });
+      discountId: rule.id,
+      name: rule.name,
+      kind: rule.kind,
+      value: rule.value,
+      amount: calculateDiscountAmount(purchaseBase.purchaseAmount, rule.kind, rule.value.toFixed(2)),
+      appliesTo: rule.appliesTo,
+      productIds: targetIds,
+    });
   }
   return applicable;
 }

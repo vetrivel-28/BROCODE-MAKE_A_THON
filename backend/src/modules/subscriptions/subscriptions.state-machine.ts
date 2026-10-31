@@ -1,4 +1,5 @@
-import type { SubscriptionRole, SubscriptionStatus } from './subscriptions.types.js';
+export type SubscriptionRole = 'SUPER_ADMIN' | 'ADMIN' | 'STAFF' | 'CUSTOMER';
+export type SubscriptionStatus = 'DRAFT' | 'QUOTATION' | 'CONFIRMED' | 'ACTIVE' | 'PAUSED' | 'CLOSED';
 
 export type SubscriptionAction =
   | 'submitQuotation'
