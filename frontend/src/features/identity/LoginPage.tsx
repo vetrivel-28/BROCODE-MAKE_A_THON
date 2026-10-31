@@ -19,9 +19,43 @@ export const LoginPage: React.FC = () => {
       localStorage.setItem('loopdesk_user', JSON.stringify(res.user));
       localStorage.setItem('loopdesk_tenant', JSON.stringify(res.tenant));
 
-      window.location.href = '/passport';
+      window.location.href = '/apps';
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // One-click instant login for testing and evaluators
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // First attempt to login with pre-seeded demo admin
+      let res;
+      try {
+        res = await identityApi.login('aarav@brightloop.com', 'SecurePassword123#');
+      } catch {
+        // If not created yet in this session, sign up on the fly
+        res = await identityApi.signup({
+          tenantName: 'Brightloop Software',
+          fullName: 'Aarav Sharma',
+          email: 'aarav@brightloop.com',
+          password: 'SecurePassword123#',
+          tier: 'STANDARD',
+          industry: 'saas'
+        });
+      }
+
+      localStorage.setItem('loopdesk_access_token', res.accessToken);
+      localStorage.setItem('loopdesk_refresh_token', res.refreshToken);
+      localStorage.setItem('loopdesk_user', JSON.stringify(res.user));
+      localStorage.setItem('loopdesk_tenant', JSON.stringify(res.tenant));
+
+      window.location.href = '/apps';
+    } catch (err: any) {
+      setError(err.message || 'Demo login failed');
     } finally {
       setLoading(false);
     }
@@ -35,7 +69,7 @@ export const LoginPage: React.FC = () => {
             L
           </div>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight">
-            Log in to Loop<span className="text-[#6C4BFF] italic">Desk</span>
+            Log in to Loop<span className="text-[#6C4BFF] font-handwritten text-4xl">Desk</span>
           </h2>
           <p className="mt-2 text-sm text-gray-500">
             Access your B2B subscription and billing platform
@@ -43,13 +77,28 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="mt-8 bg-white py-8 px-6 shadow-sm rounded-2xl border border-gray-100 sm:px-10">
+          {/* Quick Demo Button */}
+          <div className="mb-6 pb-6 border-b border-gray-100">
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={loading}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#6C4BFF] to-[#00C2A8] hover:opacity-95 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <span>⚡ One-Click Instant Demo Login (Brightloop Software)</span>
+            </button>
+            <span className="text-[10px] text-gray-400 text-center block mt-1.5">
+              Instantly logs into Standard tier owner workspace
+            </span>
+          </div>
+
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-xl border border-red-200">
+            <div className="mb-4 p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1">
                 Email Address
@@ -106,4 +155,3 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
-

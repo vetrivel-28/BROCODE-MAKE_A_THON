@@ -408,7 +408,7 @@ export class IdentityService {
           data: { revoked: true }
         });
         return;
-      } catch {}
+      } catch { }
     }
     const token = memoryStore.refreshTokens.get(tokenHash);
     if (token) {
@@ -440,7 +440,7 @@ export class IdentityService {
             resetPasswordExpires: expires
           }
         });
-      } catch {}
+      } catch { }
     }
 
     return {
@@ -464,7 +464,7 @@ export class IdentityService {
             resetPasswordExpires: { gt: now }
           }
         });
-      } catch {}
+      } catch { }
     }
 
     if (!matchedUser) {
@@ -501,7 +501,7 @@ export class IdentityService {
             resetPasswordExpires: null
           }
         });
-      } catch {}
+      } catch { }
     }
 
     return { message: 'Password has been successfully updated. You may now login.' };
@@ -636,7 +636,7 @@ export class IdentityService {
           }
         });
         return !!ent;
-      } catch {}
+      } catch { }
     }
 
     return false;
@@ -654,7 +654,7 @@ export class IdentityService {
         if (sub?.platformPlan?.tierCode) {
           return sub.platformPlan.tierCode as TierCode;
         }
-      } catch {}
+      } catch { }
     }
 
     const sub = memoryStore.subscriptions.get(tenantId);
@@ -809,7 +809,7 @@ export class IdentityService {
             razorpayPaymentId: input.razorpayPaymentId
           }
         });
-      } catch {}
+      } catch { }
     }
 
     // Memory update
@@ -835,7 +835,7 @@ export class IdentityService {
       try {
         const u = await this.prisma.user.findUnique({ where: { email } });
         if (u) return u;
-      } catch {}
+      } catch { }
     }
     return memoryStore.users.get(email.toLowerCase()) || null;
   }
@@ -845,7 +845,7 @@ export class IdentityService {
       try {
         const u = await this.prisma.user.findUnique({ where: { id } });
         if (u) return u;
-      } catch {}
+      } catch { }
     }
     for (const u of memoryStore.users.values()) {
       if (u.id === id) return u;
@@ -858,7 +858,7 @@ export class IdentityService {
       try {
         const t = await this.prisma.tenant.findUnique({ where: { id } });
         if (t) return t;
-      } catch {}
+      } catch { }
     }
     return memoryStore.tenants.get(id) || null;
   }

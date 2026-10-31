@@ -18,6 +18,16 @@ export const SignupPage: React.FC = () => {
   const hasSpecial = /[^a-zA-Z0-9]/.test(password);
   const isPasswordValid = hasMinLength && hasUpper && hasLower && hasSpecial;
 
+  const handlePrefill = () => {
+    const randomSuffix = Math.floor(Math.random() * 900 + 100);
+    setTenantName(`Aether SaaS ${randomSuffix}`);
+    setFullName('Karan Kapoor');
+    setEmail(`karan${randomSuffix}@aethersaas.com`);
+    setPassword('SecurePassword123#');
+    setTier('STANDARD');
+    setIndustry('saas');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPasswordValid) {
@@ -43,7 +53,7 @@ export const SignupPage: React.FC = () => {
       localStorage.setItem('loopdesk_user', JSON.stringify(res.user));
       localStorage.setItem('loopdesk_tenant', JSON.stringify(res.tenant));
 
-      window.location.href = '/passport';
+      window.location.href = '/apps';
     } catch (err: any) {
       setError(err.message || 'Signup failed');
     } finally {
@@ -59,7 +69,7 @@ export const SignupPage: React.FC = () => {
             L
           </div>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight">
-            Create your Loop<span className="text-[#6C4BFF] italic">Desk</span> Workspace
+            Create your Loop<span className="text-[#6C4BFF] font-handwritten text-4xl">Desk</span> Workspace
           </h2>
           <p className="mt-2 text-sm text-gray-500">
             Select your platform tier and industry starter pack to begin
@@ -67,6 +77,17 @@ export const SignupPage: React.FC = () => {
         </div>
 
         <div className="mt-8 bg-white py-8 px-6 shadow-sm rounded-2xl border border-gray-100 sm:px-10">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+            <span className="text-xs text-gray-400">Testing or evaluating?</span>
+            <button
+              type="button"
+              onClick={handlePrefill}
+              className="text-xs bg-purple-50 text-[#6C4BFF] hover:bg-purple-100 font-bold px-3 py-1.5 rounded-xl border border-purple-200 transition-all flex items-center gap-1.5"
+            >
+              <span>⚡ Auto-Fill Demo Credentials</span>
+            </button>
+          </div>
+
           {error && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-xl border border-red-200">
               {error}
@@ -240,4 +261,3 @@ export const SignupPage: React.FC = () => {
     </div>
   );
 };
-

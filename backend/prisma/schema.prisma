@@ -22,7 +22,36 @@ enum TierCode {
   CUSTOM
 }
 
-// Tenant represents an owner's organization / workspace
+// Subscription status machine
+enum SubscriptionStatus {
+  DRAFT
+  QUOTATION
+  CONFIRMED
+  ACTIVE
+  CLOSED
+}
+
+// Invoice status machine
+enum InvoiceStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+// Payment methods
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  CHEQUE
+}
+
+// ==========================================
+// PERSON 1: Identity, Access & Platform Tiers
+// ==========================================
+
 model Tenant {
   id                  String               @id @default(uuid())
   name                String
@@ -34,11 +63,23 @@ model Tenant {
 
   users               User[]
   tenantSubscriptions TenantSubscription[]
+  products            Product[]
+  plans               Plan[]
+  quotationTemplates  QuotationTemplate[]
+  subscriptions       Subscription[]
+  discounts           Discount[]
+  auditEvents         AuditEvent[]
+  taxes               Tax[]
+  invoices            Invoice[]
+  payments            Payment[]
+  billingRuns         BillingRun[]
+  wallet              Wallet?
+  customizationPurchases CustomizationPurchase[]
+  workspaceSettings   WorkspaceSetting[]
 
   @@index([slug])
 }
 
-// User accounts within a tenant (or cross-tenant SUPER_ADMIN)
 model User {
   id                  String               @id @default(uuid())
   tenantId            String
@@ -58,7 +99,6 @@ model User {
   @@index([email])
 }
 
-// Refresh tokens for JWT rotation
 model RefreshToken {
   id                  String               @id @default(uuid())
   userId              String
@@ -72,7 +112,6 @@ model RefreshToken {
   @@index([userId])
 }
 
-// PlatformPlan defines tiers (Free, Standard, Custom)
 model PlatformPlan {
   id                  String               @id @default(uuid())
   tierCode            TierCode             @unique
@@ -86,7 +125,6 @@ model PlatformPlan {
   tenantSubscriptions TenantSubscription[]
 }
 
-// Entitlement defines features available per PlatformPlan
 model Entitlement {
   id                  String               @id @default(uuid())
   platformPlanId      String
@@ -98,7 +136,6 @@ model Entitlement {
   @@unique([platformPlanId, featureKey])
 }
 
-// TenantSubscription tracks which PlatformPlan a tenant currently holds
 model TenantSubscription {
   id                  String               @id @default(uuid())
   tenantId            String
@@ -116,3 +153,356 @@ model TenantSubscription {
   @@index([tenantId])
 }
 
+// ==========================================
+// PERSON 2: Catalog, Quotations & Subscriptions
+// ==========================================
+
+model Product {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  name                String
+  type                String               // software, service, physical
+  salesPricePaise     Int                  // integer paise
+  costPricePaise      Int                  @default(0)
+  notes               String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variants            ProductVariant[]
+  subscriptionLines   SubscriptionLine[]
+
+  @@index([tenantId])
+}
+
+model ProductVariant {
+  id                  String               @id @default(uuid())
+  productId           String
+  name                String               // e.g. "Brand Odoo"
+  priceModifierPaise  Int                  // e.g. 56000 paise (560 INR)
+
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  subscriptionLines   SubscriptionLine[]
+
+  @@index([productId])
+}
+
+model Plan {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  name                String
+  pricePaise          Int
+  billingPeriod       String               // daily, weekly, monthly, yearly
+  minQuantity         Int                  @default(1)
+  autoCloseAtEnd      Boolean              @default(false)
+  closableEarly       Boolean              @default(true)
+  pausable            Boolean              @default(true)
+  renewable           Boolean              @default(true)
+  startDate           DateTime?
+  endDate             DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptions       Subscription[]
+  quotationTemplates  QuotationTemplate[]
+
+  @@index([tenantId])
+}
+
+model QuotationTemplate {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  name                String
+  validityDays        Int                  @default(30)
+  planId              String?
+  linesJson           String?              // serialized items & prices
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                Plan?                @relation(fields: [planId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Subscription {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  subscriptionNumber  String               @unique // SUB-2026-0001
+  customerName        String
+  customerEmail       String
+  planId              String
+  status              SubscriptionStatus   @default(DRAFT)
+  startDate           DateTime
+  expiryDate          DateTime?
+  paymentTermsDays    Int                  @default(15)
+  nextInvoiceDate     DateTime
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                Plan                 @relation(fields: [planId], references: [id])
+  lines               SubscriptionLine[]
+  invoices            Invoice[]
+  auditEvents         AuditEvent[]
+  billingRunItems     BillingRunItem[]
+
+  @@index([tenantId])
+  @@index([subscriptionNumber])
+}
+
+model SubscriptionLine {
+  id                  String               @id @default(uuid())
+  subscriptionId      String
+  productId           String
+  variantId           String?
+  quantity            Int                  @default(1)
+  unitPricePaise      Int
+  taxPercent          Int                  @default(18)
+  amountPaise         Int
+
+  subscription        Subscription         @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  product             Product              @relation(fields: [productId], references: [id])
+  variant             ProductVariant?      @relation(fields: [variantId], references: [id])
+
+  @@index([subscriptionId])
+}
+
+model Discount {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  code                String
+  name                String
+  type                String               // PERCENT, FIXED
+  value               Int                  // percent (e.g. 20) or paise (e.g. 50000)
+  appliesTo           String               // ALL, PRODUCT
+  productId           String?
+  minPurchasePaise    Int                  @default(0)
+  minQuantity         Int                  @default(1)
+  startDate           DateTime?
+  endDate             DateTime?
+  usageLimit          Int                  @default(100)
+  usedCount           Int                  @default(0)
+  createdAt           DateTime             @default(now())
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model AuditEvent {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  subscriptionId      String
+  type                String               // CREATED, QUOTATION_SENT, CONFIRMED, ACTIVATED, PAUSED, RENEWED, CLOSED
+  metaJson            String?
+  createdAt           DateTime             @default(now())
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription        Subscription         @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+}
+
+// ==========================================
+// PERSON 3: Billing, Payments & Customization Wallet
+// ==========================================
+
+model Tax {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  name                String               // GST 18%, GST 12%, GST 5%
+  ratePercent         Int
+  isInclusive         Boolean              @default(false)
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model Invoice {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  subscriptionId      String
+  invoiceNumber       String               @unique // INV-2026-0001
+  customerName        String
+  customerEmail       String
+  periodStart         DateTime
+  periodEnd           DateTime
+  dueDate             DateTime
+  subtotalPaise       Int
+  discountPaise       Int                  @default(0)
+  taxPaise            Int                  @default(0)
+  totalPaise          Int
+  amountPaidPaise     Int                  @default(0)
+  balancePaise        Int
+  status              InvoiceStatus        @default(DRAFT)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription        Subscription         @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  lines               InvoiceLine[]
+  payments            Payment[]
+  dunningLogs         DunningLog[]
+  billingRunItems     BillingRunItem[]
+
+  @@unique([subscriptionId, periodStart, periodEnd])
+  @@index([tenantId])
+  @@index([invoiceNumber])
+}
+
+model InvoiceLine {
+  id                  String               @id @default(uuid())
+  invoiceId           String
+  description         String
+  quantity            Int
+  unitPricePaise      Int
+  discountPaise       Int                  @default(0)
+  taxRate             Int                  @default(18)
+  taxAmountPaise      Int                  @default(0)
+  totalPaise          Int
+
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  invoiceId           String
+  amountPaise         Int
+  method              PaymentMethod
+  paymentDate         DateTime             @default(now())
+  note                String?
+  razorpayPaymentId   String?
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+}
+
+model BillingRun {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  runDate             DateTime             @default(now())
+  status              String               // RUNNING, COMPLETED, FAILED
+  totalProcessed      Int                  @default(0)
+  createdCount        Int                  @default(0)
+  skippedCount        Int                  @default(0)
+  failedCount         Int                  @default(0)
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items               BillingRunItem[]
+
+  @@index([tenantId])
+}
+
+model BillingRunItem {
+  id                  String               @id @default(uuid())
+  billingRunId        String
+  subscriptionId      String
+  invoiceId           String?
+  status              String               // CREATED, SKIPPED, FAILED
+  errorMessage        String?
+
+  billingRun          BillingRun           @relation(fields: [billingRunId], references: [id], onDelete: Cascade)
+  subscription        Subscription         @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  invoice             Invoice?             @relation(fields: [invoiceId], references: [id])
+
+  @@index([billingRunId])
+}
+
+model DunningLog {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  invoiceId           String
+  step                Int                  // Day 1, 3, 7, 14
+  sentAt              DateTime             @default(now())
+  channel             String               @default("EMAIL")
+
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, step])
+  @@index([tenantId])
+}
+
+model EmailOutbox {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  recipient           String
+  subject             String
+  body                String
+  sentAt              DateTime             @default(now())
+
+  @@index([tenantId])
+}
+
+model Wallet {
+  id                  String               @id @default(uuid())
+  tenantId            String               @unique
+  balancePaise        Int                  @default(0) // never below 0
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions        WalletTransaction[]
+}
+
+model WalletTransaction {
+  id                  String               @id @default(uuid())
+  walletId            String
+  tenantId            String
+  amountPaise         Int                  // positive for credit, negative for debit
+  type                String               // TOP_UP, PURCHASE, REFUND
+  description         String
+  idempotencyKey      String               @unique
+  createdAt           DateTime             @default(now())
+
+  wallet              Wallet               @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model CustomizationItem {
+  id                  String               @id @default(uuid())
+  code                String               @unique
+  name                String
+  pricePaise          Int
+  description         String
+  category            String
+
+  purchases           CustomizationPurchase[]
+}
+
+model CustomizationPurchase {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  itemId              String
+  pricePaidPaise      Int
+  slotUsed            Int                  @default(1)
+  purchasedAt         DateTime             @default(now())
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  item                CustomizationItem    @relation(fields: [itemId], references: [id])
+
+  @@index([tenantId])
+}
+
+// ==========================================
+// PERSON 4: Website, Design System & Insights
+// ==========================================
+
+model WorkspaceSetting {
+  id                  String               @id @default(uuid())
+  tenantId            String
+  key                 String
+  valueJson           String
+  updatedAt           DateTime             @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}

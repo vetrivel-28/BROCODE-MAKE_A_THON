@@ -3,11 +3,21 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createIdentityRouter } from './modules/identity/identity.routes.js';
 import { IdentityService } from './modules/identity/identity.service.js';
+import { createCatalogRouter } from './modules/catalog/catalog.routes.js';
+import { CatalogService } from './modules/catalog/catalog.service.js';
+import { createSubscriptionsRouter } from './modules/subscriptions/subscriptions.routes.js';
+import { SubscriptionsService } from './modules/subscriptions/subscriptions.service.js';
+import { createBillingRouter } from './modules/billing/billing.routes.js';
+import { BillingService } from './modules/billing/billing.service.js';
+import { createPaymentsRouter } from './modules/payments/payments.routes.js';
+import { PaymentsService } from './modules/payments/payments.service.js';
+import { createInsightsRouter } from './modules/insights/insights.routes.js';
+import { InsightsService } from './modules/insights/insights.service.js';
 import { authorize } from './common/auth.middleware.js';
 
 dotenv.config();
 
-export function createApp(identityService?: IdentityService) {
+export function createApp(idService?: IdentityService) {
   const app = express();
 
   app.use(cors());
@@ -27,16 +37,44 @@ export function createApp(identityService?: IdentityService) {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
   });
 
-  // Identity Module routes
-  const idService = identityService || new IdentityService();
-  const identityRouter = createIdentityRouter(idService);
+  // Services
+  const identityService = idService || new IdentityService();
+  const catalogService = new CatalogService();
+  const subscriptionsService = new SubscriptionsService();
+  const billingService = new BillingService();
+  const paymentsService = new PaymentsService();
+  const insightsService = new InsightsService();
 
+  // Routers
+  const identityRouter = createIdentityRouter(identityService);
+  const catalogRouter = createCatalogRouter(catalogService);
+  const subscriptionsRouter = createSubscriptionsRouter(subscriptionsService);
+  const billingRouter = createBillingRouter(billingService, subscriptionsService);
+  const paymentsRouter = createPaymentsRouter(paymentsService, identityService);
+  const insightsRouter = createInsightsRouter(insightsService, billingService, subscriptionsService);
+
+  // Mount routers with both /api prefix and direct prefix for convenience
   app.use('/api/identity', identityRouter);
   app.use('/identity', identityRouter);
 
+  app.use('/api/catalog', catalogRouter);
+  app.use('/catalog', catalogRouter);
+
+  app.use('/api/subscriptions', subscriptionsRouter);
+  app.use('/subscriptions', subscriptionsRouter);
+
+  app.use('/api/billing', billingRouter);
+  app.use('/billing', billingRouter);
+
+  app.use('/api/payments', paymentsRouter);
+  app.use('/payments', paymentsRouter);
+
+  app.use('/api/insights', insightsRouter);
+  app.use('/insights', insightsRouter);
+
   // Section 12 contract: GET /passport
   app.get('/passport', authorize(), (req: Request, res: Response) => {
-    idService
+    identityService
       .getPrivilegePassport(req.user!.tenantId)
       .then((data) => res.json(data))
       .catch((err) => res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: err.message } }));
@@ -61,4 +99,3 @@ if (process.env.NODE_ENV !== 'test' && (!process.env.VITEST || process.env.VITES
     console.log(`LoopDesk Backend running on http://localhost:${port}`);
   });
 }
-
