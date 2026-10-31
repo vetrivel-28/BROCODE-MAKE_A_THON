@@ -1,0 +1,323 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum InvoiceStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  CHEQUE
+}
+
+enum BillingRunStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum EmailOutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+}
+
+// =============================================================================
+// PHASE 1: TAX, INVOICE, PAYMENT, EMAIL OUTBOX
+// =============================================================================
+
+model Tax {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String   // e.g. "GST 18%"
+  rate        Decimal  @db.Decimal(5, 2) // e.g. 18.00
+  isInclusive Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lines       InvoiceLine[]
+
+  @@index([tenantId, isActive])
+  @@map("taxes")
+}
+
+model InvoiceCounter {
+  id         String   @id @default(uuid())
+  tenantId   String
+  prefix     String   @default("INV")
+  year       Int
+  lastNumber Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, prefix, year])
+  @@map("invoice_counters")
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  tenantId        String
+  invoiceNumber   String        // Format: INV-YYYY-XXXXX, unique per tenant
+  subscriptionId  String
+  customerId      String
+  status          InvoiceStatus @default(DRAFT)
+  issueDate       DateTime
+  dueDate         DateTime
+  periodStart     DateTime
+  periodEnd       DateTime
+  currency        String        @default("INR")
+  
+  // All monetary values in integer paise (INR)
+  subtotal        Int           @default(0)
+  discountTotal   Int           @default(0)
+  taxTotal        Int           @default(0)
+  total           Int           @default(0)
+  amountPaid      Int           @default(0)
+  balance         Int           @default(0)
+  
+  notes           String?
+  terms           String?
+  sentAt          DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  lines           InvoiceLine[]
+  payments        Payment[]
+  dunningLogs     DunningLog[]
+
+  // Note: overdue is derived in business logic (clock.now() > dueDate && balance > 0 && status == CONFIRMED), never stored.
+  @@unique([subscriptionId, periodStart, periodEnd])
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, status, dueDate])
+  @@index([tenantId, customerId])
+  @@index([subscriptionId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id             String   @id @default(uuid())
+  invoiceId      String
+  description    String
+  quantity       Int      @default(1)
+  unitPrice      Int      // Paise (base + variant extra)
+  discountAmount Int      @default(0) // Paise (allocated discount before tax)
+  netAmount      Int      // Paise (quantity * unitPrice - discountAmount)
+  taxId          String?
+  taxRate        Decimal  @db.Decimal(5, 2)
+  taxAmount      Int      // Paise (half-up rounded per line)
+  grossAmount    Int      // Paise (netAmount + taxAmount)
+  isTaxInclusive Boolean  @default(false)
+  productId      String?
+  variantId      String?
+  createdAt      DateTime @default(now())
+
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tax            Tax?     @relation(fields: [taxId], references: [id])
+
+  @@index([invoiceId])
+  @@map("invoice_lines")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  tenantId         String
+  invoiceId        String
+  method           PaymentMethod
+  amount           Int           // Paise, strictly > 0 and <= balance
+  paidOn           DateTime
+  reference        String?
+  note             String?
+  gatewayPaymentId String?       @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  invoice          Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([tenantId, paidOn])
+  @@map("payments")
+}
+
+model EmailOutbox {
+  id             String            @id @default(uuid())
+  tenantId       String
+  to             String
+  subject        String
+  bodyText       String?
+  bodyHtml       String?
+  attachmentName String?
+  attachmentData Bytes?
+  status         EmailOutboxStatus @default(PENDING)
+  sentAt         DateTime?
+  error          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([tenantId, status])
+  @@map("email_outbox")
+}
+
+// =============================================================================
+// PHASE 2: BILLING RUNS & DUNNING
+// =============================================================================
+
+model BillingRun {
+  id                 String           @id @default(uuid())
+  tenantId           String
+  runDate            DateTime
+  status             BillingRunStatus @default(PENDING)
+  totalSubscriptions Int              @default(0)
+  invoicesCreated    Int              @default(0)
+  totalAmount        Int              @default(0)
+  errors             Json?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  items              BillingRunItem[]
+
+  @@index([tenantId, runDate])
+  @@map("billing_runs")
+}
+
+model BillingRunItem {
+  id             String     @id @default(uuid())
+  runId          String
+  subscriptionId String
+  invoiceId      String?
+  status         String     // SUCCESS, SKIPPED, FAILED
+  errorMessage   String?
+  createdAt      DateTime   @default(now())
+
+  run            BillingRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("billing_run_items")
+}
+
+model DunningLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  invoiceId String
+  step      Int      // Dunning step: 1, 2, 3...
+  sentAt    DateTime @default(now())
+  status    String   // SENT, FAILED
+  channel   String   // EMAIL, SMS, WEBHOOK
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, step])
+  @@index([tenantId, invoiceId])
+  @@map("dunning_logs")
+}
+
+// =============================================================================
+// PHASE 3: CUSTOMIZATION WALLET & PURCHASES
+// =============================================================================
+
+model Wallet {
+  id         String   @id @default(uuid())
+  tenantId   String
+  customerId String
+  balance    Int      @default(0) // Paise; must be >= 0
+  currency   String   @default("INR")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  transactions WalletTransaction[]
+
+  @@unique([tenantId, customerId])
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id             String                @id @default(uuid())
+  walletId       String
+  tenantId       String
+  type           WalletTransactionType
+  amount         Int                   // Paise (> 0)
+  balanceAfter   Int                   // Balance after transaction
+  idempotencyKey String                @unique
+  description    String?
+  metadata       Json?
+  createdAt      DateTime              @default(now())
+
+  wallet         Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("wallet_transactions")
+}
+
+model CustomizationItem {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  description  String?
+  priceInPaise Int
+  slotCost     Int      @default(1)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  purchases    CustomizationPurchase[]
+
+  @@index([tenantId, isActive])
+  @@map("customization_items")
+}
+
+model CustomizationPurchase {
+  id          String            @id @default(uuid())
+  tenantId    String
+  customerId  String
+  itemId      String
+  walletTxId  String?
+  amountPaise Int
+  status      String            @default("ACTIVE") // ACTIVE, REVOKED
+  createdAt   DateTime          @default(now())
+
+  item        CustomizationItem @relation(fields: [itemId], references: [id])
+
+  @@index([tenantId, customerId])
+  @@map("customization_purchases")
+}
+
+model CustomizationBundle {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  slots        Int
+  priceInPaise Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+  @@map("customization_bundles")
+}
+
