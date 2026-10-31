@@ -18,16 +18,25 @@ export interface Subscription {
   id: string;
   number: string;
   customerId: string;
+  customerName?: string;
   planId: string;
   status: SubscriptionStatus;
   startDate: string | null;
   expiryDate: string | null;
   nextInvoiceDate: string | null;
   quantity: number;
+  amount?: string;
   paymentTerms: string;
   createdAt: string;
   plan: Plan;
   lines: SubscriptionLine[];
+  appliedDiscounts?: Array<{
+    discountId: string;
+    name: string;
+    kind: 'FIXED' | 'PERCENT';
+    value: string;
+    amount: string;
+  }>;
 }
 
 export interface AuditEvent {
@@ -48,4 +57,5 @@ export interface AuditEventPage {
 export interface SubscriptionPage {
   items: Subscription[];
   nextCursor: string | null;
+  statusCounts?: Record<SubscriptionStatus, number>;
 }

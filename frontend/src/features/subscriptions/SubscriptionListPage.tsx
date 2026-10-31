@@ -12,7 +12,11 @@ export default function SubscriptionListPage() {
   const [templates, setTemplates] = useState<QuotationTemplate[]>([]);
   const [templateCursor, setTemplateCursor] = useState<string | null>(null);
   const [status, setStatus] = useState<SubscriptionStatus | ''>('');
+  const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ templateId: '', customerId: '', startDate: '', expiryDate: '', paymentTerms: 'Due on receipt', quantity: '1' });
   const [saving, setSaving] = useState(false);
@@ -20,25 +24,36 @@ export default function SubscriptionListPage() {
 
   async function load(cursor?: string) {
     setError('');
+    setLoading(true);
     try {
-      const next = await subscriptionsApi.list({ cursor, status: status || undefined });
+      const next = await subscriptionsApi.list({
+        cursor,
+        status: status || undefined,
+        search: search.trim() || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      });
       setPage((current) => cursor && current ? { ...next, items: [...current.items, ...next.items] } : next);
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load subscriptions'); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => {
     void load();
+  }, [status, search, fromDate, toDate]);
+
+  useEffect(() => {
     catalogApi.templates().then((result) => {
       setTemplates(result.items);
       setTemplateCursor(result.nextCursor);
     }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Unable to load templates'));
-  }, [status]);
+  }, []);
 
   async function loadMoreTemplates() {
     if (!templateCursor) return;
     try {
-      const next = await catalogApi.templates(templateCursor);
+      const next = await catalogApi.templates({ cursor: templateCursor, take: 20 });
       setTemplates((current) => [...current, ...next.items]);
       setTemplateCursor(next.nextCursor);
     } catch (cause) {
@@ -84,20 +99,35 @@ export default function SubscriptionListPage() {
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold">All subscriptions</h2>
-          <label className="text-sm">Status <select value={status} onChange={(e) => setStatus(e.target.value as SubscriptionStatus | '')} className="ml-2 rounded-xl border p-2"><option value="">All statuses</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select></label>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setStatus('')} className={`rounded-full px-3 py-1.5 text-sm ${status === '' ? 'bg-[#6C4BFF] text-white' : 'bg-slate-100'}`}>All {page?.statusCounts ? `(${Object.values(page.statusCounts).reduce((sum, count) => sum + count, 0)})` : ''}</button>
+          {statuses.map((item) => <button type="button" key={item} onClick={() => setStatus(item)} className={`rounded-full px-3 py-1.5 text-sm ${status === item ? 'bg-[#6C4BFF] text-white' : 'bg-slate-100'}`}>
+            {item[0] + item.slice(1).toLocaleLowerCase()} {page?.statusCounts ? `(${page.statusCounts[item]})` : ''}
+          </button>)}
+        </div>
+        <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+          <input aria-label="Search subscriptions" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search number, customer ID or plan…" className="rounded-xl border p-3" />
+          <label className="text-xs text-slate-500">Start date from<input aria-label="Start date from" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="mt-1 block rounded-xl border p-2 text-sm text-[#1B1F3B]" /></label>
+          <label className="text-xs text-slate-500">Start date to<input aria-label="Start date to" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="mt-1 block rounded-xl border p-2 text-sm text-[#1B1F3B]" /></label>
         </div>
         <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-          <thead className="text-slate-500"><tr><th className="p-3">Number</th><th className="p-3">Customer</th><th className="p-3">Plan</th><th className="p-3">Start</th><th className="p-3">Expiry</th><th className="p-3">Status</th></tr></thead>
+          <thead className="text-slate-500"><tr><th className="p-3">Number</th><th className="p-3">Customer</th><th className="p-3">Plan</th><th className="p-3">Start</th><th className="p-3">Next invoice</th><th className="p-3">Amount</th><th className="p-3">Status</th></tr></thead>
           <tbody>{page?.items.map((subscription: Subscription) => <tr key={subscription.id} className="border-t border-slate-100">
             <td className="p-3"><a className="font-semibold text-[#6C4BFF]" href={`/subscriptions/${subscription.id}`}>SUB-{subscription.number}</a></td>
-            <td className="p-3">{subscription.customerId}</td><td className="p-3">{subscription.plan.name}</td>
-            <td className="p-3">{subscription.startDate ? new Date(subscription.startDate).toLocaleDateString() : '—'}</td>
-            <td className="p-3">{subscription.expiryDate ? new Date(subscription.expiryDate).toLocaleDateString() : '—'}</td>
+            <td className="p-3">{subscription.customerName ?? subscription.customerId}</td><td className="p-3">{subscription.plan.name}</td>
+            <td className="p-3">{subscription.startDate ? new Date(subscription.startDate).toLocaleDateString('en-IN') : '—'}</td>
+            <td className="p-3">{subscription.nextInvoiceDate ? new Date(subscription.nextInvoiceDate).toLocaleDateString('en-IN') : '—'}</td>
+            <td className="p-3 font-medium">₹{subscription.amount ?? (
+              Number(subscription.plan.price) * subscription.quantity
+              + subscription.lines.reduce((sum, line) => sum + Number(line.amount) + Number(line.taxAmount), 0)
+            ).toFixed(2)}</td>
             <td className="p-3"><SubscriptionStatusPill status={subscription.status} /></td>
           </tr>)}</tbody>
         </table></div>
-        {!page?.items.length && <p className="p-6 text-center text-slate-500">No subscriptions match this filter.</p>}
-        {page?.nextCursor && <button onClick={() => void load(page.nextCursor ?? undefined)} className="mt-4 rounded-xl border px-4 py-2">Load more</button>}
+        {loading && <p className="p-6 text-center text-slate-500">Loading subscriptions…</p>}
+        {!loading && !error && !page?.items.length && <p className="p-6 text-center text-slate-500">No subscriptions match these filters.</p>}
+        {page?.nextCursor && <button disabled={loading} onClick={() => void load(page.nextCursor ?? undefined)} className="mt-4 rounded-xl border px-4 py-2 disabled:opacity-50">Load next 20</button>}
       </section>
     </main>
   );
