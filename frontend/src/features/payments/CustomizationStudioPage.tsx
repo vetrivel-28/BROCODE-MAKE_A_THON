@@ -267,3 +267,4 @@ export const CustomizationStudioPage: React.FC = () => {
     </div>
   );
 };
+

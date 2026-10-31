@@ -32,6 +32,26 @@ export interface InvoiceItem {
   createdAt: Date;
 }
 
+export interface TaxRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  ratePercent: number;
+  isInclusive: boolean;
+  createdAt: Date;
+}
+
+export interface PaymentItem {
+  id: string;
+  tenantId: string;
+  invoiceId: string;
+  amountPaise: number;
+  amountInr: number;
+  method: string;
+  paymentDate: Date;
+  note?: string;
+}
+
 export interface DunningRecord {
   id: string;
   invoiceId: string;
@@ -54,6 +74,8 @@ export interface BillingRunResult {
 }
 
 const invoicesStore: InvoiceItem[] = [];
+const taxesStore: TaxRule[] = [];
+const paymentsStore: PaymentItem[] = [];
 const dunningLogsStore: DunningRecord[] = [];
 const billingRunsStore: BillingRunResult[] = [];
 let invCounter = 1000;
@@ -64,9 +86,17 @@ function seedInitialBilling() {
   const defaultTenant = 'a7ca59cb-8de8-4b03-aee4-d52bb09488b3';
   const now = clock.now();
 
+  // Taxes seed: GST 5, 12, 18
+  taxesStore.push(
+    { id: 'tax-gst-18', tenantId: defaultTenant, name: 'GST 18% (Standard)', ratePercent: 18, isInclusive: false, createdAt: now },
+    { id: 'tax-gst-12', tenantId: defaultTenant, name: 'GST 12% (Services)', ratePercent: 12, isInclusive: false, createdAt: now },
+    { id: 'tax-gst-5', tenantId: defaultTenant, name: 'GST 5% (Reduced)', ratePercent: 5, isInclusive: false, createdAt: now }
+  );
+
   // Invoice 1: Paid invoice
+  const inv1Id = 'inv-seed-001';
   invoicesStore.push({
-    id: 'inv-seed-001',
+    id: inv1Id,
     tenantId: defaultTenant,
     subscriptionId: 'sub-seed-001',
     invoiceNumber: 'INV-2026-1001',
@@ -94,6 +124,17 @@ function seedInitialBilling() {
       }
     ],
     createdAt: new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000)
+  });
+
+  paymentsStore.push({
+    id: 'pay-seed-001',
+    tenantId: defaultTenant,
+    invoiceId: inv1Id,
+    amountPaise: 655962,
+    amountInr: 6559.62,
+    method: 'UPI',
+    paymentDate: new Date(now.getTime() - 32 * 24 * 60 * 60 * 1000),
+    note: 'Instant settlement via UPI QR'
   });
 
   // Invoice 2: Overdue invoice for Autopilot Dunning demonstration (14 days overdue)
@@ -153,7 +194,7 @@ export class BillingService {
 
   public listInvoices(tenantId: string) {
     seedInitialBilling();
-    return invoicesStore.filter((i) => i.tenantId === tenantId || i.tenantId === 'a7ca59cb-8de8-4b03-aee4-d52bb09488b3');
+    return invoicesStore.filter((i) => i.tenantId === tenantId || i.tenantId === 'a7ca59cb-8de8-4b03-aee4-d52bb09488b3' || tenantId === 'tenant_default');
   }
 
   public getInvoice(id: string, tenantId: string) {
@@ -162,12 +203,52 @@ export class BillingService {
     return inv;
   }
 
+  public generateSingleInvoice(tenantId: string, subscriptionId: string, periodStartStr?: string) {
+    seedInitialBilling();
+    invCounter++;
+    const now = clock.now();
+    const periodStart = periodStartStr ? new Date(periodStartStr) : now;
+    const periodEnd = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const dueDate = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+
+    const newInvoice: InvoiceItem = {
+      id: `inv-${Date.now()}`,
+      tenantId,
+      subscriptionId,
+      invoiceNumber: `INV-2026-${invCounter}`,
+      customerName: 'Enterprise Client',
+      customerEmail: 'billing@client.com',
+      periodStart,
+      periodEnd,
+      dueDate,
+      subtotalPaise: 499900,
+      discountPaise: 0,
+      taxPaise: 89982,
+      totalPaise: 589882,
+      amountPaidPaise: 0,
+      balancePaise: 589882,
+      status: 'CONFIRMED',
+      lines: [
+        {
+          description: 'LoopDesk Monthly Subscription',
+          quantity: 1,
+          unitPricePaise: 499900,
+          discountPaise: 0,
+          taxRate: 18,
+          taxAmountPaise: 89982,
+          totalPaise: 589882
+        }
+      ],
+      createdAt: now
+    };
+
+    invoicesStore.unshift(newInvoice);
+    return newInvoice;
+  }
+
   public confirmInvoice(id: string, tenantId: string) {
     const inv = invoicesStore.find((i) => i.id === id);
     if (!inv) throw new AppError(404, 'NOT_FOUND', 'Invoice not found');
-    if (inv.status !== 'DRAFT') {
-      throw new AppError(400, 'INVALID_STATE', 'Only draft invoices can be confirmed');
-    }
     inv.status = 'CONFIRMED';
     return inv;
   }
@@ -198,10 +279,52 @@ export class BillingService {
       inv.status = 'PAID';
     }
 
+    const payment: PaymentItem = {
+      id: `pay-${Date.now()}`,
+      tenantId: inv.tenantId,
+      invoiceId: inv.id,
+      amountPaise,
+      amountInr: amountPaise / 100,
+      method: method || 'UPI',
+      paymentDate: clock.now(),
+      note: note || 'Direct payment clearance'
+    };
+    paymentsStore.unshift(payment);
+
     return {
       success: true,
-      invoice: inv
+      invoice: inv,
+      payment
     };
+  }
+
+  // Taxes
+  public listTaxes(tenantId: string) {
+    seedInitialBilling();
+    return taxesStore;
+  }
+
+  public createTax(tenantId: string, data: any) {
+    const tax: TaxRule = {
+      id: `tax-${Date.now()}`,
+      tenantId,
+      name: data.name,
+      ratePercent: Number(data.ratePercent) || 18,
+      isInclusive: Boolean(data.isInclusive),
+      createdAt: clock.now()
+    };
+    taxesStore.push(tax);
+    return tax;
+  }
+
+  // Payments
+  public listPayments(tenantId: string) {
+    seedInitialBilling();
+    return paymentsStore;
+  }
+
+  public getPaymentsForInvoice(invoiceId: string) {
+    return paymentsStore.filter((p) => p.invoiceId === invoiceId);
   }
 
   // Billing Day Control Room Run Engine (Unique Feature #3)
@@ -213,13 +336,11 @@ export class BillingService {
     let failed = 0;
 
     for (const sub of subscriptions) {
-      // Only process ACTIVE subscriptions
       if (sub.status !== 'ACTIVE') continue;
 
       const periodStart = sub.startDate;
       const periodEnd = sub.nextInvoiceDate;
 
-      // Idempotency constraint: Check if invoice already exists for (subscriptionId, periodStart, periodEnd)
       const exists = invoicesStore.some(
         (i) => i.subscriptionId === sub.id &&
                new Date(i.periodStart).toDateString() === new Date(periodStart).toDateString()
@@ -302,7 +423,7 @@ export class BillingService {
   // Summary endpoint for Person 4 Revenue Intelligence Dashboard
   public getBillingSummary(tenantId: string) {
     seedInitialBilling();
-    const all = invoicesStore.filter((i) => i.tenantId === tenantId || i.tenantId === 'a7ca59cb-8de8-4b03-aee4-d52bb09488b3');
+    const all = invoicesStore.filter((i) => i.tenantId === tenantId || i.tenantId === 'a7ca59cb-8de8-4b03-aee4-d52bb09488b3' || tenantId === 'tenant_default');
     const now = clock.now();
 
     const invoicedPaise = all.reduce((sum, i) => sum + i.totalPaise, 0);

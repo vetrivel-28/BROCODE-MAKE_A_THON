@@ -42,3 +42,4 @@ export function createCatalogRouter(service: CatalogService = new CatalogService
 }
 
 export default createCatalogRouter;
+

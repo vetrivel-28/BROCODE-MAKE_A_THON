@@ -175,11 +175,10 @@ export const SignupPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setTier('FREE')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    tier === 'FREE'
-                      ? 'border-[#6C4BFF] bg-purple-50 ring-1 ring-[#6C4BFF]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`p-3 rounded-xl border text-left transition-all ${tier === 'FREE'
+                    ? 'border-[#6C4BFF] bg-purple-50 ring-1 ring-[#6C4BFF]'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
                 >
                   <p className="font-bold text-sm">Free</p>
                   <p className="text-xs text-gray-500">₹0/mo</p>
@@ -189,11 +188,10 @@ export const SignupPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setTier('STANDARD')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    tier === 'STANDARD'
-                      ? 'border-[#6C4BFF] bg-purple-50 ring-1 ring-[#6C4BFF]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`p-3 rounded-xl border text-left transition-all ${tier === 'STANDARD'
+                    ? 'border-[#6C4BFF] bg-purple-50 ring-1 ring-[#6C4BFF]'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-sm">Standard</p>
@@ -206,11 +204,10 @@ export const SignupPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setTier('CUSTOM')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    tier === 'CUSTOM'
-                      ? 'border-[#6C4BFF] bg-purple-50 ring-1 ring-[#6C4BFF]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`p-3 rounded-xl border text-left transition-all ${tier === 'CUSTOM'
+                    ? 'border-[#6C4BFF] bg-purple-50 ring-1 ring-[#6C4BFF]'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
                 >
                   <p className="font-bold text-sm">Custom</p>
                   <p className="text-xs text-gray-500">₹1,080/mo</p>
@@ -229,11 +226,10 @@ export const SignupPage: React.FC = () => {
                     key={ind}
                     type="button"
                     onClick={() => setIndustry(ind)}
-                    className={`py-2 px-3 rounded-xl border text-center capitalize text-xs font-medium transition-all ${
-                      industry === ind
-                        ? 'border-[#00C2A8] bg-teal-50 text-[#00C2A8] font-bold'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
+                    className={`py-2 px-3 rounded-xl border text-center capitalize text-xs font-medium transition-all ${industry === ind
+                      ? 'border-[#00C2A8] bg-teal-50 text-[#00C2A8] font-bold'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
                   >
                     {ind}
                   </button>

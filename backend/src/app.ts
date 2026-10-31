@@ -53,7 +53,14 @@ export function createApp(idService?: IdentityService) {
   const paymentsRouter = createPaymentsRouter(paymentsService, identityService);
   const insightsRouter = createInsightsRouter(insightsService, billingService, subscriptionsService);
 
-  // Mount routers with both /api prefix and direct prefix for convenience
+  // Mount at /api directly (for Person 3 and Person 4 frontends calling /api/invoices, /api/taxes, etc.)
+  app.use('/api', billingRouter);
+  app.use('/api', paymentsRouter);
+  app.use('/api', catalogRouter);
+  app.use('/api', subscriptionsRouter);
+  app.use('/api', insightsRouter);
+
+  // Mount at module-specific prefixes
   app.use('/api/identity', identityRouter);
   app.use('/identity', identityRouter);
 

@@ -48,3 +48,4 @@ export function createSubscriptionsRouter(service: SubscriptionsService = new Su
 }
 
 export default createSubscriptionsRouter;
+

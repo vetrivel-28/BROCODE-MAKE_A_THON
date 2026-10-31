@@ -40,3 +40,4 @@ export function createInsightsRouter(
 }
 
 export default createInsightsRouter;
+

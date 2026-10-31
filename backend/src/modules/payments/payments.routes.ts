@@ -47,3 +47,4 @@ export function createPaymentsRouter(
 }
 
 export default createPaymentsRouter;
+

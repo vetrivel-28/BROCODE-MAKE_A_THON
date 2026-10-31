@@ -155,3 +155,4 @@ export const AppLauncherPage: React.FC = () => {
     </div>
   );
 };
+

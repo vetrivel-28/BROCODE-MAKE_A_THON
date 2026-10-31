@@ -202,3 +202,4 @@ export class CatalogService {
     return tmpl;
   }
 }
+
