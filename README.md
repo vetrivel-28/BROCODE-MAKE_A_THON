@@ -4,10 +4,6 @@
 
 A centralized platform designed to simplify the management of multiple Odoo clients, subscriptions, quotations, and invoices through a single dashboard.
 
-
-\
-
-
 ---
 
 ## About the Project
