@@ -1,102 +1,92 @@
 # BROCODE | MAKE-A-THON 2026
 
-# Odoo Client Management Platform
+## Client Management Platform
 
-A centralized platform for managing Odoo clients, subscriptions, quotations, and invoices through a single dashboard.
+A centralized platform designed to simplify the management of multiple Odoo clients, subscriptions, quotations, and invoices through a single dashboard.
 
-\<p align="center">
-&#x20; \<img src="[https://img.shields.io/badge/Project-MAKE--A--THON-2563EB?style=flat-square](https://img.shields.io/badge/Project-MAKE--A--THON-2563EB?style=flat-square)" />
-&#x20; \<img src="[https://img.shields.io/badge/Status-In%20Development-orange?style=flat-square](https://img.shields.io/badge/Status-In%20Development-orange?style=flat-square)" />
-&#x20; \<img src="[https://img.shields.io/badge/Team-BROCODE-111827?style=flat-square](https://img.shields.io/badge/Team-BROCODE-111827?style=flat-square)" />
-\</p>
+
+\
+
 
 ---
 
 ## About the Project
 
-Managing multiple Odoo clients can involve handling different accounts, business records, subscriptions, and transactions.
+Managing multiple clients involves handling different accounts, business records, subscriptions, and transactions.
 
-Our project aims to simplify this process by providing a centralized platform where administrators can manage and monitor multiple Odoo clients from one place.
+Our project aims to bring these operations together in one centralized platform. It provides administrators with a unified place to manage client information, monitor subscriptions, and track quotations and invoices.
 
-The platform is designed to improve visibility, reduce manual administrative work, and make client-related operations easier to manage.
+The goal is to make client management more organized, accessible, and efficient.
 
 ## Problem Statement
 
-Managing multiple clients across separate Odoo environments can create challenges such as:
+Managing multiple Odoo clients can present several challenges:
 
-- Difficulty maintaining centralized client information.
-- Tracking subscriptions and their status.
-- Managing quotations and invoices efficiently.
-- Monitoring client activity and business operations.
-- Accessing important information across different client accounts.
+- Maintaining client information across different accounts.
+- Keeping track of subscriptions and their status.
+- Managing quotations and invoices.
+- Monitoring client activities.
+- Accessing important business information efficiently.
 
-## Our Approach
+## Our Solution
 
-We are developing a unified management platform that brings essential client management operations together.
+We are building a centralized platform that simplifies these operations through a single interface.
 
-The system aims to provide administrators with a clear overview of their clients and the ability to manage important business activities through a single interface.
+The platform aims to provide:
+
+- A unified dashboard for client information.
+- Centralized client management.
+- Subscription tracking.
+- Quotation and invoice management.
+- Business activity monitoring.
 
 ## Key Features
 
-| Module                  | Description                                             |
-| ----------------------- | ------------------------------------------------------- |
-| Authentication          | Secure user registration and login.                     |
-| Dashboard               | Overview of client information and business activities. |
-| Client Management       | Add, view, update, and manage client records.           |
-| Subscription Management | Track client subscriptions and their status.            |
-| Quotation Management    | Create and monitor client quotations.                   |
-| Invoice Management      | Access and track invoice information.                   |
-| Analytics               | Present useful business insights through the dashboard. |
+| Feature                 | Description                                  |
+| ----------------------- | -------------------------------------------- |
+| Authentication          | User registration and secure login.          |
+| Dashboard               | Overview of clients and business activities. |
+| Client Management       | Manage and maintain client records.          |
+| Subscription Management | Track client subscriptions and status.       |
+| Quotation Management    | Create and monitor quotations.               |
+| Invoice Management      | View and track invoice information.          |
+| Analytics               | Present important business insights.         |
 
-*Features are subject to implementation and integration progress.*
+*Feature availability depends on the current implementation.*
 
 ## Technology Stack
 
-**Frontend**
-
-- React.js
-- TypeScript
-- CSS
-
-**Backend**
-
-- Node.js
-- Express.js
-- TypeScript
-
-**Development Tools**
-
-- Git and GitHub
-- Visual Studio Code
-- Postman
-
-**Database and Odoo Integration**
-
-The database and Odoo integration approach will be documented once finalized.
+| Area                    | Technologies                    |
+| ----------------------- | ------------------------------- |
+| Frontend                | React.js, TypeScript, CSS       |
+| Backend                 | Node.js, Express.js, TypeScript |
+| Version Control         | Git, GitHub                     |
+| API Testing             | Postman                         |
+| Development Environment | Visual Studio Code              |
 
 ## System Architecture
 
 The proposed high-level architecture:
 
 ```text
-       Administrator
-             |
-             v
-       React Frontend
-             |
-             v
-        REST API
-             |
-             v
-      Node.js Backend
-             |
-       +-----+------+
-       |            |
-       v            v
-    Database    Odoo API
+             Administrator
+                   |
+                   v
+             React Frontend
+                   |
+                   v
+                REST API
+                   |
+                   v
+             Node.js Backend
+                   |
+             +-----+------+
+             |            |
+             v            v
+          Database       API
 ```
 
-The final architecture will depend on the database design and Odoo integration approach.
+*The architecture will be updated to reflect the final implementation.*
 
 ## Project Structure
 
@@ -118,11 +108,9 @@ BROCODE-MAKE_A_THON/
 
 ## Getting Started
 
-Follow these steps to run the project locally.
+Follow these instructions to run the project locally.
 
 ### Prerequisites
-
-Make sure you have installed:
 
 - Node.js
 - npm
@@ -140,7 +128,7 @@ git clone https://github.com/vetrivel-28/BROCODE-MAKE_A_THON.git
 cd BROCODE-MAKE_A_THON
 ```
 
-### 3. Start the Frontend
+### 3. Install and Run the Frontend
 
 ```bash
 cd frontend
@@ -148,7 +136,7 @@ npm install
 npm run dev
 ```
 
-### 4. Start the Backend
+### 4. Install and Run the Backend
 
 Open a separate terminal:
 
@@ -158,17 +146,17 @@ npm install
 npm run dev
 ```
 
-Configure the required environment variables before running the backend.
+Make sure the required environment variables are configured before starting the backend.
 
-## Development Roadmap
+## Development Progress
 
 - [x] Initial project setup
 - [x] GitHub repository setup
 - [x] Frontend development
 - [x] Backend API development
 - [x] Database integration
-- [x] Authentication implementation
-- [x] Client management module
+- [x] Authentication
+- [x] Client management
 - [x] Subscription management
 - [x] Quotation and invoice management
 - [x] Testing and deployment
@@ -179,22 +167,22 @@ Configure the required environment variables before running the backend.
 
 MAKE-A-THON 2026
 
-| Team Member | Responsibility                         |
-| ----------- | -------------------------------------- |
-| Member 1    | Frontend Development                   |
-| Member 2    | Backend Development                    |
-| Member 3    | Database and Odoo Integration          |
-| Member 4    | Testing, Documentation and Integration |
+| Member   | Responsibility                         |
+| -------- | -------------------------------------- |
+| Member 1 | Frontend Development                   |
+| Member 2 | Backend Development                    |
+| Member 3 | Database and Odoo Integration          |
+| Member 4 | Testing, Documentation and Integration |
 
-## Contributing
+## Contribution Guidelines
 
-We follow a branch-based development workflow to keep contributions organized.
+We follow a branch-based workflow to keep development organized.
 
-1. Create a separate branch for your feature or task.
+1. Create a separate branch for your task.
 2. Implement and test your changes.
 3. Commit your changes with a meaningful message.
 4. Push your branch to GitHub.
-5. Open a Pull Request for review.
+5. Create a Pull Request for review.
 
 Example:
 
@@ -205,16 +193,12 @@ git commit -m "Add client management module"
 git push origin feature/client-management
 ```
 
-## Project Status
-
-This project is currently under development as part of MAKE-A-THON 2026.
-
-More features and documentation will be added as development progresses.
-
 ---
 
-\<p align="center">
-&#x20; Developed by \<strong>Team BROCODE\</strong>
-&#x20; \<br/>
-&#x20; MAKE-A-THON 2026
-\</p>
+## Project Status
+
+BROCODE is being developed as part of MAKE-A-THON 2026.
+
+This repository will be updated as new features, improvements, and integrations are implemented.
+
+**Developed by Team BROCODE**
